@@ -1,0 +1,138 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if local %}Editar Local{% else %}Registrar Local{% endif %} - UniSena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen font-sans p-4">
+
+    <div class="max-w-7xl mx-auto pt-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+            
+            <!-- 🧭 PANEL LATERAL: CONSEJOS Y PREVIEW -->
+            <div class="lg:w-1/3 space-y-6 order-2 lg:order-1">
+                
+                <!-- CONSEJOS -->
+                <div class="bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/20">
+                    <h3 class="text-[#125f58] font-bold mb-4 flex items-center gap-2">
+                        <span class="text-xl">💡</span> Consejos Pro
+                    </h3>
+                    <ul class="text-sm text-gray-600 space-y-3">
+                        <li class="flex gap-2">
+                            <span class="text-[#125f58] font-bold">✔</span>
+                            <p><strong>Ubicación:</strong> Sé específico para que los clientes te encuentren fácilmente.</p>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="text-[#125f58] font-bold">✔</span>
+                            <p><strong>Imagen:</strong> Una foto de la fachada de tu local genera mucha más confianza.</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- VISTA PREVIA -->
+                <div class="bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/20">
+                    <h3 class="text-center text-[#125f58] font-bold mb-4 uppercase text-xs tracking-widest">Vista Previa</h3>
+                    <div class="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                        <div class="h-48 bg-gray-200 relative overflow-hidden flex items-center justify-center">
+                            <img id="prevImg" src="{% if local.Imagen %}{{ local.Imagen.url }}{% endif %}" 
+                                 class="{% if not local.Imagen %}hidden{% endif %} w-full h-full object-cover transition-opacity duration-300">
+                            <div id="noImg" class="{% if local.Imagen %}hidden{% endif %} text-gray-400 text-4xl">🏢</div>
+                        </div>
+                        <div class="p-4">
+                            <h4 id="prevName" class="font-bold text-gray-800 text-lg truncate">{{ local.Nombre_local|default:'Nombre del Local' }}</h4>
+                            <p id="prevAddr" class="text-gray-500 text-xs mt-1 italic truncate">📍 {{ local.Ubicacion_direccion|default:'Ubicación...' }}</p>
+                            <p id="prevDesc" class="text-gray-600 text-xs mt-3 line-clamp-3">{{ local.Descripcion|default:'Descripción de tu negocio...' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 📝 FORMULARIO -->
+            <div class="lg:w-2/3 order-1 lg:order-2">
+                <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+                    <div class="bg-[#125f58] p-6 text-center">
+                        <h2 class="text-2xl font-bold text-white uppercase tracking-wider">
+                            {% if local %}Editar Local{% else %}Registrar Nuevo Local{% endif %}
+                        </h2>
+                    </div>
+
+                    <form id="localForm" method="POST" enctype="multipart/form-data" class="p-8 space-y-6">
+                        {% csrf_token %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1 uppercase tracking-tight">Nombre del Establecimiento</label>
+                                <input type="text" name="Nombre_local" value="{{ local.Nombre_local|default:'' }}"
+                                    class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#125f58] outline-none transition-all"
+                                    placeholder="Ej: Confecciones El Sena" required>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1 uppercase tracking-tight">Dirección / Ubicación</label>
+                                <input type="text" name="Ubicacion_direccion" value="{{ local.Ubicacion_direccion|default:'' }}"
+                                    class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#125f58] outline-none transition-all"
+                                    placeholder="Calle 123 # 45-67, Ciudad" required>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1 uppercase tracking-tight">Descripción</label>
+                                <textarea name="Descripcion" rows="3"
+                                    class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#125f58] outline-none transition-all"
+                                    placeholder="Cuéntanos qué ofreces..." required>{{ local.Descripcion|default:'' }}</textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1 uppercase tracking-tight">Apertura</label>
+                                <input type="time" name="Horaapertura" value="{{ local.Horaapertura|time:'H:i' }}"
+                                    class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#125f58] outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1 uppercase tracking-tight">Cierre</label>
+                                <input type="time" name="HoraCierre" value="{{ local.HoraCierre|time:'H:i' }}"
+                                    class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#125f58] outline-none">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1 uppercase tracking-tight">Imagen del Local</label>
+                                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all">
+                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                        <p class="text-xs text-gray-500">{% if local %}Cambiar imagen{% else %}Subir foto{% endif %}</p>
+                                    </div>
+                                    <input type="file" name="Imagen" id="imgInput" class="hidden" accept="image/*">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4 pt-4">
+                            <a href="{% url 'dashboard_vendedor' %}" class="flex-1 text-center py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all uppercase tracking-widest text-xs">Cancelar</a>
+                            <button type="submit" class="flex-1 py-4 bg-[#125f58] text-white rounded-2xl font-bold hover:bg-[#0d4742] shadow-lg transition-all uppercase tracking-widest text-xs">{% if local %}Guardar{% else %}Crear{% endif %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('localForm');
+        form.addEventListener('input', (e) => {
+            if (e.target.name === 'Nombre_local') document.getElementById('prevName').innerText = e.target.value || 'Nombre del Local';
+            if (e.target.name === 'Ubicacion_direccion') document.getElementById('prevAddr').innerText = '📍 ' + (e.target.value || 'Ubicación...');
+            if (e.target.name === 'Descripcion') document.getElementById('prevDesc').innerText = e.target.value || 'Descripción de tu negocio...';
+        });
+
+        document.getElementById('imgInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                const img = document.getElementById('prevImg');
+                img.src = url;
+                img.classList.remove('hidden');
+                document.getElementById('noImg').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

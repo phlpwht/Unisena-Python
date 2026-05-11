@@ -1,0 +1,141 @@
+{% extends "base_auth.html" %}
+
+{% block titulo %}Nueva contraseña{% endblock %}
+
+{% block contenido %}
+
+<h4 class="text-center mb-3">Nueva contraseña</h4>
+
+{% if error %}
+  <div class="alert alert-custom text-center">
+    {{ error }}
+  </div>
+{% endif %}
+
+{% if success %}
+  <div class="alert alert-custom text-center">
+    {{ success }}
+  </div>
+{% endif %}
+
+<hr>
+<form method="POST">
+  {% csrf_token %}
+
+  <input type="text" name="codigo" placeholder="Código" class="form-control mb-2">
+
+  <!-- 🔥 NUEVA CONTRASEÑA (MEJORADA) -->
+  <label>Nueva contraseña</label>
+
+  <div class="input-group mb-2">
+
+    <span class="input-group-text">
+      <i class="bi bi-lock"></i>
+    </span>
+
+    <input type="password" name="password" id="password" class="form-control" required>
+
+    <button type="button" class="btn btn-outline-secondary" onclick="verPassword()">
+      <i class="bi bi-eye"></i>
+    </button>
+
+  </div>
+
+  <!-- 🔥 BARRA DE SEGURIDAD -->
+  <div class="progress mt-2" style="height:8px;">
+    <div id="barraSeguridad" class="progress-bar"></div>
+  </div>
+
+  <small id="textoSeguridad"></small>
+
+  <!-- CAMBIAR CONTRASEÑA -->
+  <button type="submit" name="accion" value="cambiar" class="btn btn-main text-white w-100 mt-3">
+    Cambiar contraseña
+  </button>
+
+  <!-- REENVIAR -->
+  <button type="submit" name="accion" value="reenviar" class="btn btn-secondary w-100 mt-2">
+    Reenviar código
+  </button>
+
+</form>
+
+<script>
+
+function verPassword() {
+  let input = document.getElementById("password");
+  input.type = input.type === "password" ? "text" : "password";
+}
+
+let password = document.getElementById("password")
+let barra = document.getElementById("barraSeguridad")
+let texto = document.getElementById("textoSeguridad")
+
+password.addEventListener("keyup", function(){
+
+  let valor = password.value
+  let fuerza = 0
+
+  if(valor.length >= 8){
+    fuerza++
+  }
+
+  if(/[A-Z]/.test(valor)){
+    fuerza++
+  }
+
+  if(/[0-9]/.test(valor)){
+    fuerza++
+  }
+
+  if(/[^A-Za-z0-9]/.test(valor)){
+    fuerza++
+  }
+
+  if(fuerza <= 1){
+
+    barra.style.width="25%"
+    barra.className="progress-bar bg-danger"
+    texto.innerHTML="Contraseña muy débil"
+
+  }
+
+  else if(fuerza == 2){
+
+    barra.style.width="50%"
+    barra.className="progress-bar bg-warning"
+    texto.innerHTML="Contraseña débil"
+
+  }
+
+  else if(fuerza == 3){
+
+    barra.style.width="75%"
+    barra.className="progress-bar bg-info"
+    texto.innerHTML="Contraseña buena"
+
+  }
+
+  else if(fuerza == 4){
+
+    barra.style.width="100%"
+    barra.className="progress-bar bg-success"
+    texto.innerHTML="Contraseña fuerte"
+
+  }
+
+})
+
+/* 🔥 ALERTAS QUE DESAPARECEN */
+setTimeout(() => {
+  const alert = document.querySelector('.alert');
+  if (alert) {
+    alert.style.transition = 'opacity 0.5s ease';
+    alert.style.opacity = '0';
+    setTimeout(() => alert.remove(), 500);
+  }
+}, 3000);
+
+</script>
+
+{% endblock %}

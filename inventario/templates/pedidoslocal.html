@@ -1,0 +1,113 @@
+<style>
+    @media print { .no-print, form, nav, button, .bg-gray-50 { display: none !important; } body { background: white !important; padding: 0 !important; } .shadow-md, .shadow-lg { box-shadow: none !important; border: 1px solid #eee !important; } table { width: 100% !important; border: 1px solid #000 !important; } th { background-color: #f3f4f6 !important; color: black !important; border-bottom: 2px solid #000 !important; } td { border-bottom: 1px solid #eee !important; } .text-[#125f58] { color: black !important; } }
+</style>
+
+<div class="mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-6">
+        <div>
+            <div class="flex items-center gap-4">
+                <h2 class="text-[#125f58] text-3xl font-black uppercase tracking-tighter">Gestión de Ventas</h2>
+                <button onclick="window.print()" class="no-print bg-white text-gray-500 p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition shadow-sm" title="Imprimir Reporte">
+                    <i class="bi bi-printer-fill text-xl"></i>
+                </button>
+            </div>
+            <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Reportes y Filtros Multi-criterio</p>
+        </div>
+        
+        <!-- RESUMEN DE REPORTE (DINÁMICO) -->
+        <div class="flex gap-4">
+            <div class="bg-[#125f58] text-white p-4 rounded-3xl shadow-lg shadow-[#125f58]/20 flex items-center gap-4">
+                <i class="bi bi-graph-up-arrow text-2xl opacity-50"></i>
+                <div>
+                    <p class="text-[8px] font-black uppercase tracking-widest leading-none mb-1">Total Ventas</p>
+                    <p class="text-xl font-black leading-none">${{ resumen_pedidos.venta_total|default:0|floatformat:0 }}</p>
+                </div>
+            </div>
+            <div class="bg-orange-500 text-white p-4 rounded-3xl shadow-lg shadow-orange-500/20 flex items-center gap-4">
+                <i class="bi bi-piggy-bank text-2xl opacity-50"></i>
+                <div>
+                    <p class="text-[8px] font-black uppercase tracking-widest leading-none mb-1">Recaudo (Abonos)</p>
+                    <p class="text-xl font-black leading-none">${{ resumen_pedidos.recaudo_total|default:0|floatformat:0 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL DE FILTROS MULTI-CRITERIO -->
+    <form method="GET" class="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 no-print">
+        <input type="hidden" name="pedidos" value="1">
+        <div>
+            <label class="text-[9px] font-black text-gray-400 uppercase mb-2 block">Fecha Inicio</label>
+            <input type="date" name="p_inicio" value="{{ p_inicio }}" class="w-full bg-white border-0 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#125f58]">
+        </div>
+        <div>
+            <label class="text-[9px] font-black text-gray-400 uppercase mb-2 block">Estado Pedido</label>
+            <select name="p_estado" class="w-full bg-white border-0 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#125f58]">
+                <option value="">Todos los estados</option>
+                {% for code, label in estados_pedido %}
+                <option value="{{ code }}" {% if p_estado_sel == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="text-[9px] font-black text-gray-400 uppercase mb-2 block">Venta Mínima ($)</label>
+            <input type="number" name="p_min" placeholder="Ej: 50000" class="w-full bg-white border-0 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#125f58]">
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="w-full bg-[#125f58] text-white p-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#0d4742] transition">
+                Filtrar Reporte
+            </button>
+        </div>
+        <div class="flex items-end">
+            <button type="button" onclick="window.print()" class="w-full bg-white text-[#125f58] border-2 border-[#125f58] p-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#125f58] hover:text-white transition flex items-center justify-center gap-2">
+                <i class="bi bi-printer-fill"></i> Imprimir Reporte
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if pedidos_local %}
+<div class="overflow-x-auto">
+  <table class="w-full rounded-xl overflow-hidden shadow-md">
+    <thead class="bg-[#125f58] text-white">
+      <tr>
+        <th class="p-4 text-xs font-black uppercase tracking-widest"># Orden</th>
+        <th class="p-4 text-xs font-black uppercase tracking-widest">Cliente</th>
+        <th class="p-4 text-xs font-black uppercase tracking-widest">Fecha</th>
+        <th class="p-4 text-xs font-black uppercase tracking-widest">Estado</th>
+        <th class="p-4 text-xs font-black uppercase tracking-widest no-print">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white text-center">
+      {% for pedido in pedidos_local %}
+      <tr class="border-b hover:bg-gray-50 transition">
+        <td class="p-3 font-bold text-[#125f58]">#{{ pedido.idPedido|stringformat:"04d" }}</td>
+        <td class="p-3 text-sm">
+            <div class="flex flex-col">
+                <span class="font-bold text-gray-800">{{ pedido.usuario.nombres }} {{ pedido.usuario.apellidos }}</span>
+                <span class="text-[10px] text-gray-400">{{ pedido.usuario.correo }}</span>
+            </div>
+        </td>
+        <td class="p-3 text-xs text-gray-500">{{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</td>
+        <td class="p-3">
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-gray-100 text-gray-600">
+                {{ pedido.estado.estado_pedido }}
+            </span>
+        </td>
+        <td class="p-3 no-print">
+            <a href="{% url 'detalle_pedido_vendedor' id_local=local.IdLocal id_pedido=pedido.idPedido %}" 
+               class="inline-block bg-[#125f58] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition shadow-md">
+                <i class="bi bi-info-circle-fill"></i> Más información
+            </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-gray-50 p-10 rounded-[2rem] text-center border-2 border-dashed border-gray-100">
+    <i class="bi bi-cart-x text-5xl text-gray-200 mb-4 block"></i>
+    <p class="text-gray-400 font-black uppercase tracking-widest text-xs">No hay pedidos registrados para tus uniformes aún.</p>
+</div>
+{% endif %}

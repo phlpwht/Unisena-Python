@@ -1,0 +1,106 @@
+{% extends "base_auth.html" %}
+{% load socialaccount %}
+{% block titulo %} Login | UniSena {% endblock %}
+{% block contenido %}
+
+<h4 class="text-center mb-4">Iniciar sesión</h4>
+
+<form method="POST">
+  {% csrf_token %} {% if error %}
+  <div class="alert alert-custom">
+    <i class="bi bi-exclamation-circle"></i>
+    {{ error }}
+  </div>
+  {% endif %} {% if messages %} {% for message in messages %}
+
+  <div class="alert alert-custom">{{ message }}</div>
+
+  {% endfor %} {% endif %}
+
+  <div class="mb-3">
+    <label>Correo</label>
+
+    <div class="input-group">
+      <span class="input-group-text">
+        <i class="bi bi-envelope"></i>
+      </span>
+
+      <input type="email" name="correo" class="form-control" required />
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label>Contraseña</label>
+
+    <div class="input-group">
+      <span class="input-group-text">
+        <i class="bi bi-lock"></i>
+      </span>
+
+      <input
+        type="password"
+        name="password"
+        id="password"
+        class="form-control"
+        required
+      />
+
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        onclick="verPassword()"
+      >
+        <i class="bi bi-eye"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between mb-3">
+    <a href="{% url 'recuperar_password' %}">¿Olvidaste tu contraseña?</a>
+  </div>
+
+  <button class="btn btn-main w-100 text-white mb-3">Iniciar sesión</button>
+
+  <a href="{% provider_login_url 'google' %}" class="btn btn-light border w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
+    <i class="bi bi-google"></i> Iniciar sesión con Google
+  </a>
+
+  <div class="text-center">
+    ¿No tienes cuenta?
+
+    <a href="/registro/"> Crear cuenta </a>
+  </div>
+</form>
+
+<script>
+  function verPassword() {
+    let input = document.getElementById("password");
+
+    if (input.type === "password") {
+      input.type = "text";
+    } else {
+      input.type = "password";
+    }
+  }
+
+  history.pushState(null, null, location.href);
+
+  window.onpopstate = function () {
+    history.go(1);
+  };
+
+  setTimeout(function () {
+    let alertas = document.querySelectorAll(".alert");
+
+    alertas.forEach(function (alerta) {
+      alerta.style.transition = "opacity 0.5s";
+      alerta.style.opacity = "0";
+
+      setTimeout(function () {
+        alerta.remove();
+      }, 500);
+    });
+  }, 3000);
+</script>
+
+{% endblock %}

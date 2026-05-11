@@ -1,0 +1,218 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mi Carrito | UniSena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen p-4 md:p-10 font-sans">
+
+    <!-- ✅ MENSAJES -->
+    {% if messages %}
+    <div id="mensaje-container" class="fixed inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none animate-fade-in">
+      {% for message in messages %}
+      <div class="bg-white/95 backdrop-blur-xl border-l-[12px] border-[#125f58] text-[#125f58] px-10 py-8 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] mb-4 pointer-events-auto text-center">
+        <i class="bi bi-bag-check-fill text-5xl block mb-3"></i>
+        <span class="font-black uppercase tracking-[0.2em] text-sm">{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(() => {
+        const mensaje = document.getElementById("mensaje-container");
+        if (mensaje) {
+          mensaje.style.transition = "opacity 0.5s ease";
+          mensaje.style.opacity = "0";
+          setTimeout(() => mensaje.remove(), 500);
+        }
+      }, 2000);
+    </script>
+    {% endif %}
+
+    <div class="max-w-5xl mx-auto py-12">
+        <div class="flex flex-col md:flex-row justify-between items-center md:items-end mb-10 gap-6">
+            <div>
+                <h1 class="text-5xl font-black text-white tracking-tighter uppercase drop-shadow-xl">Mi Pedido</h1>
+                <p class="text-white/80 text-sm font-bold mt-2 uppercase tracking-widest flex items-center gap-2">
+                    <i class="bi bi-bag-check-fill"></i> Tienes {{ cart_count }} uniformes seleccionados
+                </p>
+            </div>
+            <a href="{% url 'catalogo_prendas' %}" class="bg-white/20 backdrop-blur-md px-8 py-3 rounded-2xl border border-white/30 text-[10px] font-black text-white hover:bg-white hover:text-[#125f58] transition shadow-2xl uppercase tracking-[0.2em] active:scale-95">← Seguir Explorando</a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- LISTA DE PRODUCTOS -->
+            <div class="lg:col-span-2 space-y-6">
+                {% for item in items %}
+                <div class="item-card bg-white/80 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-xl border border-white/30 flex flex-col sm:flex-row items-center gap-10 hover:shadow-2xl transition-all duration-500 group">
+                    <!-- Selección -->
+                    <div class="flex items-center">
+                        <input type="checkbox" class="item-checkbox w-6 h-6 rounded-full border-gray-300 text-[#125f58] focus:ring-[#125f58] transition-all cursor-pointer"
+                               data-subtotal="{{ item.subtotal }}"
+                               data-cantidad="{{ item.cantidad }}">
+                    </div>
+
+                    <div class="w-28 h-28 bg-gray-50 rounded-[2rem] overflow-hidden flex-shrink-0 shadow-inner border border-gray-100 relative">
+                        {% if item.obj.imagen %}
+                            <img src="{{ item.obj.imagen.url }}" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        {% else %}
+                            <div class="flex items-center justify-center h-full"><i class="bi bi-image text-gray-200 text-4xl"></i></div>
+                        {% endif %}
+                        <div class="absolute bottom-0 right-0 bg-[#125f58] text-white text-[8px] px-2 py-1 font-black rounded-tl-xl shadow-lg">x{{ item.cantidad }}</div>
+                    </div>
+                    
+                    <div class="flex-grow">
+                        <h3 class="font-black text-gray-800 text-xl tracking-tight uppercase">{{ item.obj.nombre }}</h3>
+                        <p class="text-[10px] text-[#125f58] font-black uppercase tracking-widest mt-1 flex items-center gap-1">
+                            <i class="bi bi-shop"></i> {{ item.obj.idLocal.Nombre_local }}
+                        </p>
+                        <!-- ✅ Talla y Tipo de Uniforme -->
+                        <div class="mt-2 flex items-center gap-2">
+                            <span class="bg-[#125f58]/10 text-[#125f58] text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">Talla: {{ item.obj.talla }}</span>
+                            <span class="bg-gray-100 text-gray-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">{{ item.obj.get_tipoPrenda_display }}</span>
+                        </div>
+                        <div class="mt-3 flex items-center gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[8px] text-gray-400 font-black uppercase tracking-tighter">Precio Unitario</span>
+                                <span class="text-xs font-black text-gray-600">${{ item.obj.precio|floatformat:0 }}</span>
+                            </div>
+                            <div class="w-px h-6 bg-gray-100"></div>
+                            <div class="flex flex-col">
+                                <span class="text-[8px] text-gray-400 font-black uppercase tracking-tighter">Unidades</span>
+                                <span class="text-xs font-black text-gray-600">{{ item.cantidad }}</span>
+                            </div>
+                            <div class="w-px h-6 bg-gray-100"></div>
+                            <div class="flex flex-col">
+                                <span class="text-[8px] text-gray-400 font-black uppercase tracking-tighter">Stock Disp.</span>
+                                <span class="text-xs font-black {% if item.obj.stock <= 5 %}text-red-500 animate-pulse{% else %}text-gray-600{% endif %}">{{ item.obj.stock }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-right">
+                        <span class="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">Subtotal</span>
+                        <p class="text-3xl font-black text-[#125f58] tracking-tighter drop-shadow-sm">${{ item.subtotal|floatformat:0 }}</p>
+                        <a href="{% url 'eliminar_del_carrito' item.obj.idPrenda %}" class="inline-block mt-4 text-[9px] text-red-500 font-black hover:text-red-700 uppercase tracking-widest border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-50 transition">
+                            <i class="bi bi-trash3"></i> Quitar
+                        </a>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="bg-white/80 backdrop-blur p-20 rounded-[4rem] text-center border border-dashed border-white/50 shadow-2xl">
+                    <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                        <i class="bi bi-cart-x text-5xl text-gray-200"></i>
+                    </div>
+                    <p class="mt-4 text-gray-500 font-black uppercase tracking-widest text-sm">Vaya, parece que aún no has elegido nada.</p>
+                    <a href="{% url 'catalogo_prendas' %}" class="inline-block mt-8 bg-[#125f58] text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:bg-[#0d4742] transition-all">Explorar ahora</a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- RESUMEN -->
+            <div class="lg:col-span-1">
+                <div class="bg-white/90 backdrop-blur-2xl p-12 rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white/50 sticky top-24 overflow-hidden">
+                    <!-- Efecto de adorno -->
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#125f58]/5 rounded-full blur-3xl"></div>
+                    
+                    <h2 class="text-2xl font-black text-gray-800 mb-12 uppercase tracking-tighter border-b pb-4 border-gray-100 flex items-center gap-3">
+                        <i class="bi bi-receipt-cutoff text-[#125f58]"></i> Resumen
+                    </h2>
+                    
+                    <div class="space-y-8 mb-12">
+                        <div class="flex justify-between items-center bg-gray-50/50 p-6 rounded-2xl border border-gray-100 shadow-inner">
+                            <div class="flex flex-col">
+                                <span class="text-gray-400 font-black uppercase text-[9px] tracking-widest">Subtotal Seleccionado</span>
+                                <span id="subtotal-seleccionado" class="font-black text-gray-600 text-lg">$0</span>
+                            </div>
+                            <div class="w-px h-8 bg-gray-200"></div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-gray-400 font-black uppercase text-[9px] tracking-widest">Unidades</span>
+                                <span id="display-selected-count" class="font-black text-[#125f58] text-xl tracking-tight">0</span>
+                            </div>
+                        </div>
+
+                        <form action="{% url 'procesar_pago' %}" method="POST">
+                            {% csrf_token %}
+                            <!-- 💰 Bloque de Abono Obligatorio -->
+                            <div class="flex flex-col gap-2 mt-6">
+                                <label class="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1">¿Cuánto deseas abonar?</label>
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xl">$</span>
+                                    <input type="number" name="abono_pago" id="abono_pago" required min="1" 
+                                           placeholder="Ej: 20000"
+                                           class="w-full p-6 pl-10 bg-gray-50 border border-gray-100 rounded-2xl text-xl font-black text-[#125f58] focus:ring-2 focus:ring-[#125f58] outline-none shadow-inner">
+                                </div>
+                                <p class="text-[9px] text-red-500 italic font-bold uppercase tracking-tighter mt-1">⚠️ El abono es obligatorio para continuar</p>
+                            </div>
+
+                            <div class="border-t-2 border-dashed border-gray-100 pt-8 my-12">
+                                <div class="flex justify-between items-baseline">
+                                    <span class="text-gray-400 font-black uppercase text-[10px] tracking-[0.2em]">Saldo Pendiente</span>
+                                    <div class="text-right">
+                                        <p id="final-total" class="text-4xl font-black text-[#125f58] tracking-tighter">${{ total|floatformat:0 }}</p>
+                                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Pesos Colombianos</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-6 bg-[#125f58] text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-[#125f58]/40 hover:bg-[#0d4742] transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4 group">
+                                <span>Proceder al pago</span>
+                                <i class="bi bi-arrow-right-circle-fill text-xl group-hover:translate-x-1 transition-transform"></i>
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div class="mt-8 flex items-center justify-center gap-3 opacity-30 grayscale">
+                        <i class="bi bi-shield-lock-fill text-2xl"></i>
+                        <p class="text-[8px] font-black uppercase tracking-[0.1em] leading-tight">UniSena Secure Payment<br>Protección al Comprador 100%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lógica de cálculo dinámico para los checkboxes
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        const displaySelectedCount = document.getElementById('display-selected-count');
+        const subtotalDisplay = document.getElementById('subtotal-seleccionado');
+        const finalTotal = document.getElementById('final-total');
+        const abonoInput = document.getElementById('abono_pago');
+
+        function calculateTotal() {
+            let subtotal = 0;
+            let totalUnidades = 0;
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    subtotal += parseFloat(cb.dataset.subtotal);
+                    totalUnidades += parseInt(cb.dataset.cantidad);
+                }
+            });
+
+            // Obtener abono y validar que no supere el subtotal
+            let abono = parseFloat(abonoInput.value) || 0;
+            if (abono > subtotal) {
+                abono = subtotal;
+                abonoInput.value = subtotal;
+            }
+
+            const totalConDescuento = Math.max(0, subtotal - abono);
+            
+            displaySelectedCount.innerText = totalUnidades;
+            subtotalDisplay.innerText = '$' + new Intl.NumberFormat().format(subtotal);
+            finalTotal.innerText = '$' + new Intl.NumberFormat().format(totalConDescuento);
+            
+            // Actualizar el máximo permitido en el input de abono
+            abonoInput.max = subtotal;
+        }
+
+        checkboxes.forEach(cb => cb.addEventListener('change', calculateTotal));
+        abonoInput.addEventListener('input', calculateTotal);
+
+        // Inicializar el total en $0 al cargar (ya que nada está seleccionado)
+        calculateTotal();
+    </script>
+</body>
+</html>

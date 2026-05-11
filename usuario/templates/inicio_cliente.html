@@ -1,0 +1,393 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>UniSena</title>
+
+    <!-- ✅ Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+
+    <style>
+      body {
+        background-color: #f5f7fa;
+      }
+
+      .hero {
+        background: linear-gradient(135deg, #125f58 0%, #1a2e18 100%), 
+                    radial-gradient(circle at top right, #d8f5e0 0%, transparent 40%);
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Efecto de brillo sutil de fondo */
+      .hero::after {
+        content: "";
+        position: absolute;
+        top: -10%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        background: rgba(216, 245, 224, 0.1);
+        filter: blur(80px);
+        border-radius: 50%;
+        z-index: 1;
+      }
+
+      .card-product:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0px 15px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-fade-in {
+        animation: fadeIn 0.6s ease-out forwards;
+      }
+
+      .footer {
+        background: linear-gradient(135deg, #125f58, #263521);
+      }
+
+      .logo-sena {
+        width: 40px;
+      }
+    </style>
+  </head>
+
+  <body class="font-sans">
+    <!-- ✅ MENSAJES (Para ver alertas de carrito) -->
+    {% if messages %}
+    <div id="mensaje-container" class="fixed inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none">
+      {% for message in messages %}
+      <div class="bg-white/95 backdrop-blur-xl border-l-[12px] border-[#125f58] text-[#125f58] px-10 py-8 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] mb-4 animate-fade-in pointer-events-auto text-center">
+        <i class="bi bi-bag-check-fill text-5xl block mb-3"></i>
+        <span class="font-black uppercase tracking-[0.2em] text-sm">{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(() => {
+        const mensaje = document.getElementById("mensaje-container");
+        if (mensaje) {
+          mensaje.style.transition = "opacity 0.5s ease";
+          mensaje.style.opacity = "0";
+          setTimeout(() => mensaje.remove(), 500);
+        }
+      }, 2000);
+    </script>
+    {% endif %}
+
+    <!-- 🔥 NAV -->
+    <nav class="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+      <div class="flex justify-between items-center px-4 md:px-8 h-16 max-w-6xl mx-auto">
+        
+        <!-- LOGO -->
+        <a href="{% url 'landing' %}" class="flex items-center gap-3 group transition">
+          <div class="p-1 bg-white rounded-full shadow-sm border border-gray-100 group-hover:scale-105 transition">
+            <img src="{% static 'img/logo.jpeg' %}" class="w-8 h-8 rounded-full object-cover" />
+          </div>
+          <span class="text-[#125f58] font-extrabold text-xl tracking-tight uppercase">UniSena</span>
+        </a>
+
+        <!-- USUARIO Y ACCIONES -->
+        <div class="flex items-center gap-4">
+          {% if request.session.usuario_id %}
+          
+          <!-- 👤 PERFIL PILL -->
+          <div class="relative">
+            <button
+              onclick="toggleMenu()"
+              class="flex items-center gap-2 bg-white border border-gray-200 pl-1 pr-3 py-1 rounded-full text-sm hover:shadow-md transition-all active:scale-95"
+            >
+              <div class="w-7 h-7 bg-[#125f58] text-white rounded-full flex items-center justify-center">
+                <i class="bi bi-person-fill"></i>
+              </div>
+              <span class="hidden sm:inline font-medium text-gray-700">
+                {{ request.session.usuario_nombre }}
+              </span>
+              <i class="bi bi-chevron-down text-[10px] text-gray-400"></i>
+            </button>
+
+            <!-- DROPDOWN -->
+            <ul
+              id="menu"
+              class="hidden absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in"
+            >
+              <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Rol actual</p>
+                <p class="text-sm font-semibold text-[#125f58]">{{ request.session.usuario_rol }}</p>
+              </div>
+
+              {% if request.session.usuario_rol == "Administrador" %}
+              <li><a href="{% url 'inicio_admin' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition">
+                <i class="bi bi-speedometer2"></i> Panel Administrador</a></li>
+              {% elif request.session.usuario_rol == "Vendedor" %}
+              <li><a href="{% url 'dashboard_vendedor' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition">
+                <i class="bi bi-shop"></i> Panel Vendedor</a></li>
+              {% elif request.session.usuario_rol == "Cliente" %}
+              <li><a href="{% url 'mis_pedidos' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition">
+                <i class="bi bi-bag-check"></i> Mis pedidos</a></li>
+              {% endif %}
+
+              <li class="border-t border-gray-100">
+                <a href="{% url 'logout' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition font-semibold">
+                  <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- 🛒 CARRITO -->
+          {% if request.session.usuario_rol == "Cliente" %}
+          <a href="{% url 'ver_carrito' %}" class="p-2 text-gray-500 hover:text-[#125f58] hover:bg-gray-100 rounded-full transition relative">
+            <i class="bi bi-cart2 text-xl"></i>
+            <span class="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-lg">{{ cart_count }}</span>
+          </a>
+          {% endif %}
+
+          {% else %}
+          <a href="{% url 'login' %}" class="bg-[#125f58] text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg shadow-[#125f58]/20 hover:bg-[#0d4742] transition-all active:scale-95"
+          >
+            Iniciar sesión
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+    <!-- FIN NAV -->
+
+    <!-- 🚀 HERO -->
+    
+    <section class="hero text-white text-center py-8 md:py-14 px-6 relative">
+      <div class="max-w-2xl mx-auto relative z-10 bg-white/10 backdrop-blur-md border border-white/20 p-6 md:p-10 rounded-3xl shadow-2xl">
+        <h1 class="text-2xl md:text-4xl font-black tracking-tight mb-2 drop-shadow-md">
+          Bienvenido a <span class="text-[#d8f5e0]">UniSena</span>
+        </h1>
+        <p class="text-xs md:text-base text-white/80 font-medium mb-6 max-w-lg mx-auto leading-relaxed">
+          Compra y vende uniformes fácilmente con la mejor calidad y seguridad del mercado institucional.
+        </p>
+        <a href="{% url 'explorar_locales' %}" 
+           class="inline-block bg-[#d8f5e0] text-[#125f58] px-6 py-2.5 rounded-xl font-bold shadow-xl hover:bg-white hover:scale-105 transition-all active:scale-95 uppercase tracking-widest text-[9px]">
+          Explorar Locales
+        </a>
+      </div>
+    </section>
+
+    <!-- 🛍️ PRODUCTOS -->
+    <section class="max-w-5xl mx-auto px-6 py-12">
+
+      <!-- 📦 ALERTA PEDIDO PENDIENTE (REUBICADO) -->
+      {% if pedidos_pendientes_count > 0 %}
+      <div class="mb-10">
+          <div class="bg-orange-50 border-l-[6px] border-orange-500 p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4 animate-fade-in">
+              <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 shadow-inner">
+                      <i class="bi bi-clock-history text-2xl"></i>
+                  </div>
+                  <div>
+                      <h4 class="font-black text-orange-800 uppercase text-[10px] tracking-widest">Pendientes de Pago</h4>
+                      <p class="text-orange-700 font-bold text-sm">Tienes {{ pedidos_pendientes_count }} pedidos pendientes. Por favor, acércate al local para completar tu compra.</p>
+                  </div>
+              </div>
+              <a href="{% url 'mis_pedidos' %}" class="w-full md:w-auto text-center bg-orange-50 text-orange-600 border border-orange-200 px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-100 transition shadow-sm active:scale-95">
+                  Ver mis pedidos
+              </a>
+          </div>
+      </div>
+      {% endif %}
+
+      <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+        <div>
+          <h3 class="text-xl md:text-2xl font-black text-[#125f58] tracking-tight">
+            Uniformes disponibles
+          </h3>
+          <p class="text-gray-500 text-xs mt-1 font-medium">Calidad garantizada para tu formación profesional</p>
+        </div>
+        <div class="text-right flex flex-col items-end">
+            <p class="text-[10px] font-bold text-[#125f58] uppercase tracking-widest bg-[#d8f5e0] px-3 py-1 rounded-full inline-block mb-2">
+                Nuevos productos en: <span id="timer-count">30</span>s
+            </p>
+            <a href="{% url 'catalogo_prendas' %}" class="text-[#125f58] font-bold text-[11px] hover:underline flex items-center gap-2 transition-all">
+                Ver todo el catálogo <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+      </div>
+
+      <div id="container-prendas" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <!-- Las tarjetas se cargarán aquí mediante JavaScript -->
+      </div>
+    </section>
+
+    <!-- 📩 CTA -->
+    <section class="max-w-5xl mx-auto px-6 mb-16">
+      <div class="hero rounded-[2.5rem] p-8 md:p-12 text-center relative overflow-hidden shadow-2xl">
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center mx-auto mb-4 border border-white/20 shadow-inner">
+            <i class="bi bi-question-circle text-2xl text-[#d8f5e0]"></i>
+          </div>
+          <h4 class="text-xl md:text-3xl font-black text-white mb-3 tracking-tight">
+            Muy Proximamente...
+          </h4>
+          <p class="text-white/70 text-xs md:text-base mb-8 max-w-lg mx-auto font-medium">
+            Tendremos mucha más funcionalidad para mejorar tu experiencia. ¡Mantente atento a las novedades que estamos preparando para ti!
+          </p>
+          <a href="#" 
+             class="inline-flex items-center gap-2 bg-white text-[#125f58] px-8 py-3 rounded-xl font-bold hover:bg-[#d8f5e0] transition-all hover:scale-105 active:scale-95 uppercase tracking-widest text-[9px] shadow-2xl">
+            ... <i class="bi bi-chevron-right"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🔻 FOOTER -->
+    <footer class="footer text-white py-10 px-6">
+      <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+        <div class="flex items-center gap-3">
+          <img src="{% static 'img/logo.jpeg' %}" class="w-10 h-10 rounded-full border-2 border-white/20" />
+          <span class="font-black text-2xl tracking-tighter">UniSena</span>
+        </div>
+        
+        <div class="flex flex-col items-center md:items-end text-center md:text-right">
+          <p class="text-white/60 text-sm font-medium">Plataforma de gestión de uniformes institucional</p>
+          <p class="text-white/60 text-sm font-medium">SENA - Todos los derechos reservados</p>
+          <div class="flex gap-4 mt-4">
+            <a href="#" class="text-white/40 hover:text-white transition-all"><i class="bi bi-facebook"></i></a>
+            <a href="#" class="text-white/40 hover:text-white transition-all"><i class="bi bi-instagram"></i></a>
+            <a href="#" class="text-white/40 hover:text-white transition-all"><i class="bi bi-twitter-x"></i></a>
+          </div>
+        </div>
+      </div>
+      <div class="max-w-6xl mx-auto border-t border-white/10 mt-12 pt-8 text-center">
+        <p class="text-white/30 text-[10px] font-bold uppercase tracking-[0.3em]">© 2026 UniSena</p>
+      </div>
+    </footer>
+
+    <!-- 🔥 JS -->
+    <script>
+      function toggleMenu() {
+        const menu = document.getElementById("menu");
+        menu.classList.toggle("hidden");
+      }
+
+      // Cerrar menu al hacer clic fuera del dropdown
+      document.addEventListener('click', function(event) {
+        const menu = document.getElementById('menu');
+        const button = event.target.closest('button');
+        
+        if (menu && !menu.contains(event.target) && !button) {
+          menu.classList.add('hidden');
+        }
+      });
+
+      // --- Lógica de Rotación Aleatoria de Uniformes ---
+      
+      // Pasamos los datos de Django a una lista de JavaScript
+      const poolPrendas = [
+        {% for p in prendas %}
+        {
+          id: {{ p.idPrenda }},
+          nombre: "{{ p.nombre|escapejs }}",
+          precio: "{{ p.precio }}",
+          local: "{{ p.idLocal.Nombre_local|escapejs }}",
+          material: "{{ p.material|escapejs }}",
+          talla: "{{ p.talla|escapejs }}",
+          tipo: "{{ p.get_tipoPrenda_display|escapejs }}",
+          vendedor: "{{ p.idLocal.IdUsuario.nombres|escapejs }} {{ p.idLocal.IdUsuario.apellidos|escapejs }}",
+          imagen: "{% if p.imagen %}{{ p.imagen.url }}{% endif %}"
+        },
+        {% endfor %}
+      ];
+
+      console.log('Pool de Prendas:', poolPrendas); // ✅ VERIFICA ESTO EN LA CONSOLA DEL NAVEGADOR
+
+      let tiempoRestante = 30;
+      const usuarioRol = "{{ request.session.usuario_rol }}";
+      const timerElement = document.getElementById('timer-count');
+      const container = document.getElementById('container-prendas');
+
+      function actualizarTarjetas() {
+        if (poolPrendas.length === 0) {
+            container.innerHTML = '<p class="col-span-3 text-center text-gray-500 py-10 font-medium">Aún no se han creado uniformes en la plataforma o no hay locales activos.</p>';
+            return;
+        }
+
+        // Mezclar y obtener 3 aleatorios
+        const seleccionados = [...poolPrendas]
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 3);
+
+        container.innerHTML = '';
+
+        seleccionados.forEach(p => {
+          const cartButton = usuarioRol !== 'Vendedor' ? `
+            <a href="/uniformes/carrito/agregar/${p.id}/" class="bg-[#125f58] text-white p-2 rounded-xl hover:bg-[#0d4742] transition-all shadow-md flex items-center justify-center ml-2 px-3"><i class="bi bi-cart-plus text-lg"></i></a>
+          ` : '';
+
+          const html = `
+            <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 transition-all duration-300 card-product group animate-fade-in flex flex-col h-[420px]" style="animation-delay: ${Math.random() * 0.2}s;">
+              <div class="bg-gray-50 rounded-2xl h-48 flex items-center justify-center overflow-hidden mb-4 relative">
+                <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold text-[#125f58] shadow-sm uppercase tracking-widest">
+                  Destacado
+                </div>
+                ${p.imagen ? `<img src="${p.imagen}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">` : `<i class="bi bi-bag-check text-5xl text-gray-200"></i>`}
+              </div>
+              <div class="px-2 flex flex-col flex-grow">
+                <div class="flex justify-between items-start mb-1">
+                  <h5 class="font-bold text-gray-800 text-base truncate">${p.nombre}</h5>
+                  <span class="bg-[#125f58]/10 text-[#125f58] text-[8px] px-2 py-0.5 rounded-full font-bold">${p.talla}</span>
+                </div>
+                <p class="text-gray-400 text-[9px] mb-1 flex items-center gap-1 italic">
+                  <i class="bi bi-shop"></i> ${p.local}
+                </p>
+                <p class="text-gray-500 text-[9px] mb-1 font-medium italic">Material: ${p.material} | ${p.tipo}</p>
+                <p class="text-[#125f58] text-[9px] mb-3 flex items-center gap-1 font-bold">
+                  <i class="bi bi-person-badge"></i> Vendedor: <span class="text-gray-600">${p.vendedor}</span>
+                </p>
+                <div class="mt-auto flex justify-between items-center pt-3 border-t border-dashed border-gray-100">
+                  <a href="/uniformes/uniforme/${p.id}/" class="text-center py-2 bg-gray-50 text-[#125f58] rounded-xl text-[10px] font-bold hover:bg-gray-100 transition-all border border-gray-100 uppercase flex-1">Detalles</a>
+                  ${cartButton}
+                </div>
+              </div>
+            </div>
+          `;
+          container.innerHTML += html;
+        });
+      }
+
+      function iniciarContador() {
+        setInterval(() => {
+          tiempoRestante--;
+          if (tiempoRestante < 0) {
+            tiempoRestante = 30;
+            actualizarTarjetas();
+          }
+          timerElement.innerText = tiempoRestante;
+        }, 1000);
+      }
+
+      // Iniciar al cargar
+      if (poolPrendas.length > 0) {
+        actualizarTarjetas();
+        iniciarContador();
+      } else {
+        container.innerHTML = '<p class="col-span-3 text-center text-gray-500 py-10 font-medium">Aún no se han creado uniformes en la plataforma o no hay locales activos.</p>';
+      }
+    </script>
+  </body>
+</html>

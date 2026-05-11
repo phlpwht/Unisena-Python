@@ -1,0 +1,271 @@
+<div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b pb-4">
+  <h2 class="text-[#125f58] text-xl font-bold">
+    📦 Inventario del Local
+  </h2>
+  <button id="btn-bulk-delete" type="button" onclick="confirmarMasivo()" 
+          class="hidden bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-lg shadow-red-600/20 transition-all transform hover:scale-105 active:scale-95">
+    🗑️ Eliminar Seleccionados
+  </button>
+</div>
+
+<!-- FORMULARIO DE FILTROS -->
+<form method="GET" action="{% url 'detalle_local' local.IdLocal %}" class="bg-gray-50 p-6 rounded-2xl shadow-inner mb-8 space-y-4">
+  <input type="hidden" name="inventario" value="1"> {# Para mantener la pestaña de inventario abierta #}
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Búsqueda por Nombre/Descripción -->
+    <div>
+      <label for="search" class="block text-xs font-bold text-gray-500 uppercase mb-1">Buscar</label>
+      <input type="text" name="search" id="search" placeholder="Nombre, descripción..."
+             value="{{ search_query }}"
+             class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#125f58] outline-none">
+    </div>
+
+    <!-- Filtro por Talla -->
+    <div>
+      <label for="talla" class="block text-xs font-bold text-gray-500 uppercase mb-1">Talla</label>
+      <select name="talla" id="talla" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#125f58] outline-none">
+        <option value="all">Todas</option>
+        {% for choice_val, choice_label in prenda_talla_choices %}
+          <option value="{{ choice_val }}" {% if talla_filter == choice_val %}selected{% endif %}>{{ choice_label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Filtro por Material -->
+    <div>
+      <label for="material" class="block text-xs font-bold text-gray-500 uppercase mb-1">Material</label>
+      <input type="text" name="material" id="material" placeholder="Algodón, poliéster..."
+             value="{{ material_filter }}"
+             class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#125f58] outline-none">
+    </div>
+
+    <!-- Filtro por Tipo de Prenda -->
+    <div>
+      <label for="tipoPrenda" class="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo</label>
+      <select name="tipoPrenda" id="tipoPrenda" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#125f58] outline-none">
+        <option value="all">Todos</option>
+        {% for choice_val, choice_label in prenda_tipo_choices %}
+          <option value="{{ choice_val }}" {% if tipo_prenda_filter == choice_val %}selected{% endif %}>{{ choice_label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Ordenamiento -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <div>
+      <label for="sort" class="block text-xs font-bold text-gray-500 uppercase mb-1">Ordenar por</label>
+      <select name="sort" id="sort" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#125f58] outline-none">
+        <option value="">Por defecto</option>
+        <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Precio (Menor a Mayor)</option>
+        <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Precio (Mayor a Menor)</option>
+        <option value="stock_asc" {% if sort_by == 'stock_asc' %}selected{% endif %}>Stock (Menor a Mayor)</option>
+        <option value="stock_desc" {% if sort_by == 'stock_desc' %}selected{% endif %}>Stock (Mayor a Menor)</option>
+      </select>
+    </div>
+    
+    <!-- Botones de acción -->
+    <div class="flex gap-2 items-end">
+      <button type="submit" class="flex-1 bg-[#125f58] text-white py-2 px-4 rounded-lg hover:bg-[#0d4742] transition font-semibold">
+        Aplicar Filtros
+      </button>
+      <a href="{% url 'detalle_local' local.IdLocal %}?inventario=1" class="flex-1 text-center bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition font-semibold">
+        Limpiar Filtros
+      </a>
+    </div>
+  </div>
+</form>
+
+{% if not prendas and filtros_activos %}
+<div class="text-center text-gray-500 mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+  No se encontraron prendas con los filtros aplicados 😔. <a href="{% url 'detalle_local' local.IdLocal %}?inventario=1" class="text-[#125f58] hover:underline">Limpiar filtros</a>
+</div>
+{% endif %}
+
+{% if prendas %}
+<form id="bulk-delete-form" method="POST" action="{% url 'eliminar_prendas_masivo' local.IdLocal %}">
+  {% csrf_token %}
+<div class="overflow-x-auto">
+  <table class="w-full rounded-xl overflow-hidden shadow-md">
+    <thead class="bg-[#125f58] text-white">
+      <tr>
+        <th class="p-3 w-10"><input type="checkbox" id="check-all" onclick="toggleAll(this)" class="w-4 h-4 rounded border-gray-300 focus:ring-0"></th>
+        <th class="p-3">Imagen</th>
+        <th class="p-3">Nombre</th>
+        <th class="p-3">Precio</th>
+        <th class="p-3">Stock</th>
+        <th class="p-3">Talla</th>
+        <th class="p-3">Material</th>
+        <th class="p-3">Tipo</th>
+        <th class="p-3">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white text-center">
+      {% for prenda in prendas %}
+      <tr class="border-b hover:bg-gray-50 transition">
+        <td class="p-2"><input type="checkbox" name="prendas_ids" value="{{ prenda.idPrenda }}" onchange="toggleDeleteButton()" class="w-4 h-4 rounded border-gray-300 text-[#125f58] focus:ring-0"></td>
+        <td class="p-2">
+          {% if prenda.imagen %}
+          <img
+            src="{{ prenda.imagen.url }}"
+            class="h-16 w-16 object-cover rounded-lg mx-auto"
+          />
+          {% else %}
+          <span class="text-gray-400">Sin imagen</span>
+          {% endif %}
+        </td>
+        <td class="p-2 font-semibold text-[#125f58]">{{ prenda.nombre }}</td>
+        <td class="p-2">${{ prenda.precio }}</td>
+        <td
+          class="p-2 {% if prenda.stock <= 5 %}text-red-500 font-bold{% endif %}"
+        >
+          {{ prenda.stock }}
+        </td>
+        <td class="p-2">{{ prenda.talla }}</td>
+        <td class="p-2">{{ prenda.material }}</td>
+        <td class="p-2">{{ prenda.tipoPrenda }}</td>
+        <td class="p-2 flex justify-center gap-2">
+          <a
+            href="{% url 'ver_movimientos_prenda' prenda.idPrenda %}"
+            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg transition"
+            title="Ver Historial de Movimientos"
+          >
+            📊
+          </a>
+          <button
+            type="button"
+            onclick="confirmarAccion('editar', '{{ prenda.idPrenda }}', '{% url 'editar_prenda' prenda.idPrenda %}', '{{ prenda.stock }}')"
+            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg transition"
+          >
+            ✏️
+          </button>
+          <button
+            type="button"
+            onclick="confirmarAccion('eliminar', '{{ prenda.idPrenda }}', '{% url 'eliminar_prenda' prenda.idPrenda %}', '{{ prenda.stock }}')"
+            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg transition"
+          >
+            🗑️
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</form>
+{% else %}
+<div class="text-center text-gray-500 mt-6">No hay prendas registradas 😢</div>
+{% endif %}
+
+<!-- MODAL DE CONFIRMACIÓN -->
+<div
+  id="modal-confirm"
+  class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"
+>
+  <div class="bg-white p-6 rounded-xl shadow-lg w-96 text-center">
+    <p id="modal-text" class="text-gray-700 text-lg mb-4 font-bold">¿Estás seguro?</p>
+    
+    <form id="modal-form" method="POST">
+      {% csrf_token %}
+      
+      <!-- Campo para cantidad (se muestra solo al eliminar) -->
+      <div id="div-cantidad-eliminar" class="hidden mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+        <label for="cantidad_eliminar" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-left">Cantidad a retirar del stock</label>
+        <input type="number" name="cantidad_eliminar" id="cantidad_eliminar" min="1" value="1" 
+               class="w-full p-3 border-2 border-gray-200 rounded-xl text-center text-xl font-black text-[#125f58] focus:border-[#125f58] outline-none transition-colors">
+        <p class="text-[9px] text-gray-400 mt-2 italic text-left">Si la cantidad es mayor o igual al stock actual, el producto se eliminará por completo.</p>
+      </div>
+
+      <div class="flex justify-center gap-4">
+        <button
+          type="submit"
+          class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
+        >
+          Sí
+        </button>
+        <button
+          type="button"
+          onclick="cerrarModal()"
+          class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function confirmarAccion(tipo, id, url, stock = 0) {
+    const modal = document.getElementById("modal-confirm");
+    const modalText = document.getElementById("modal-text");
+    const form = document.getElementById("modal-form");
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    const divCantidad = document.getElementById("div-cantidad-eliminar");
+    const inputCantidad = document.getElementById("cantidad_eliminar");
+
+    if (tipo === 'editar') {
+        modalText.textContent = "¿Deseas editar este uniforme? 📝";
+        btnSubmit.className = "bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg";
+        divCantidad.classList.add("hidden");
+        // Para editar, simplemente cambiamos la ubicación al confirmar
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            window.location.href = url;
+        };
+    } else {
+        modalText.textContent = "¿Deseas retirar existencias de este uniforme? 🗑️";
+        btnSubmit.className = "bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg";
+        divCantidad.classList.remove("hidden");
+        inputCantidad.max = stock;
+        inputCantidad.value = 1;
+        form.action = url;
+        form.onsubmit = null; // Deja que el formulario haga el POST normal
+    }
+
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+
+  function cerrarModal() {
+    const modal = document.getElementById("modal-confirm");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  function toggleAll(source) {
+    const checkboxes = document.getElementsByName('prendas_ids');
+    checkboxes.forEach(cb => cb.checked = source.checked);
+    toggleDeleteButton();
+  }
+
+  function toggleDeleteButton() {
+    const selected = document.querySelectorAll('input[name="prendas_ids"]:checked').length;
+    const btn = document.getElementById('btn-bulk-delete');
+    if (selected > 0) btn.classList.remove('hidden');
+    else btn.classList.add('hidden');
+  }
+
+  function confirmarMasivo() {
+    const selected = document.querySelectorAll('input[name="prendas_ids"]:checked').length;
+    const modal = document.getElementById("modal-confirm");
+    const modalText = document.getElementById("modal-text");
+    const form = document.getElementById("modal-form");
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    const divCantidad = document.getElementById("div-cantidad-eliminar");
+
+    modalText.textContent = `¿Estás seguro de eliminar las ${selected} prendas seleccionadas? Esta acción no se puede deshacer. ⚠️`;
+    btnSubmit.className = "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold";
+    
+    divCantidad.classList.add("hidden");
+    
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        document.getElementById('bulk-delete-form').submit();
+    };
+
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+</script>

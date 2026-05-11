@@ -1,0 +1,188 @@
+{% load static %}
+
+<!doctype html>
+<html>
+  <head>
+    <title>Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body
+    class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen font-sans"
+  >
+    <!-- HEADER -->
+    <div class="text-center pt-8">
+      <img
+        src="{% static 'img/image.png' %}"
+        class="w-24 mx-auto rounded-full border-4 border-white shadow-xl hover:scale-110 transition duration-300"
+      />
+
+      <h1 class="text-white text-4xl font-bold mt-4 tracking-tight drop-shadow-lg">
+        Panel del Vendedor
+      </h1>
+
+      <h2 class="text-white text-xl mt-2">
+        Bienvenido, {{ request.session.usuario_nombre }}!
+      </h2>
+
+      <p class="text-white/80 text-sm mt-1">
+        Gestiona tus locales de forma sencilla
+      </p>
+    </div>
+
+    <!-- CONTENEDOR -->
+    <div class="max-w-5xl mx-auto px-4 mt-10">
+      <!-- ACCIONES -->
+      <div class="flex flex-wrap justify-center gap-4 mb-12">
+        <a
+          href="{% url 'landing' %}"
+          class="bg-white/90 backdrop-blur text-[#125f58] px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-white transition-all flex items-center gap-2"
+        >
+          <- Inicio
+        </a>
+        {% if puede_crear %}
+        <a
+          href="{% url 'crear_local' %}"
+          id="btnCrear"
+          class="bg-white/90 backdrop-blur text-[#125f58] px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-white transition-all flex items-center gap-2"
+        >
+          ➕ Crear Local
+        </a>
+        {% endif %}
+
+        <!-- BOTÓN VER LOCALES (MODO CRUD) -->
+        <a
+          href="{% url 'lista_locales' %}"
+          class="bg-white/90 backdrop-blur text-[#125f58] px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-white transition-all flex items-center gap-2"
+        >
+          Ver Locales (Gestión)
+        </a>
+
+        <!-- BOTÓN ADMINISTRAR (MODO NO CRUD / VISTA CLIENTE) -->
+        <a
+          href="{% url 'administrar_locales' %}"
+          class="bg-white/90 backdrop-blur text-[#125f58] px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-white transition-all flex items-center gap-2"
+        >
+            Administrar (Ver Información)
+        </a>
+
+      <!-- BOTÓN CERRAR SESIÓN -->
+      <a
+        href="{% url 'logout' %}"
+        class="bg-red-50/90 backdrop-blur text-red-600 px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-red-100 transition-all flex items-center gap-2 border border-red-200"
+      >
+        Cerrar Sesión
+      </a>
+      </div>
+
+      <!-- CARDS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- TOTAL -->
+        <div class="bg-white/80 backdrop-blur-md rounded-3xl shadow-xl p-8 text-center border border-white/20">
+          <h3 class="text-gray-500 text-xs font-bold uppercase tracking-widest">Total Locales</h3>
+          <p class="text-5xl font-black text-[#125f58] mt-4">
+            {{ total_locales }}
+          </p>
+        </div>
+
+        <!-- CREAR -->
+        {% if puede_crear %}
+        <div
+          class="bg-white/80 backdrop-blur-md rounded-3xl shadow-xl p-8 text-center border border-white/20 hover:scale-[1.03] transition-all duration-300"
+        >
+          <h3 class="text-gray-500 text-xs font-bold uppercase tracking-widest">Nuevo Local</h3>
+          <p class="text-gray-400 text-xs mt-2">¿Tienes una nueva sucursal?</p>
+          <a
+            href="{% url 'crear_local' %}"
+            class="block mt-3 text-[#125f58] font-semibold hover:underline"
+          >
+            Crear ahora →
+          </a>
+        </div>
+        {% endif %}
+
+        <!-- ADMIN -->
+        <div class="bg-white/80 backdrop-blur-md rounded-3xl shadow-xl p-8 text-center border border-white/20">
+          <h3 class="text-gray-500 text-xs font-bold uppercase tracking-widest">Gestión</h3>
+          <p class="text-gray-400 text-xs mt-2">Actualiza tus establecimientos</p>
+          <a
+            href="{% url 'lista_locales' %}"
+            class="block mt-3 text-[#125f58] font-semibold hover:underline"
+          >
+            Ver locales →
+          </a>
+        </div>
+      </div>
+
+      <!-- PROGRESO -->
+      <div class="mt-6 bg-white/80 backdrop-blur-md rounded-3xl shadow-xl p-8 text-center border border-white/20">
+        <h2 class="text-lg font-semibold text-[#125f58] mb-2">
+          Progreso de locales
+        </h2>
+
+        <!-- CONTADOR -->
+        <p class="text-4xl font-black text-[#125f58]">
+          <span id="contador">0</span>/3
+        </p>
+
+        <!-- BARRA -->
+        <div class="w-full bg-gray-200 rounded-full h-3 mt-6 overflow-hidden max-w-md mx-auto">
+          <div
+            id="barraProgreso"
+            class="h-3 rounded-full transition-all duration-1000 ease-out"
+          ></div>
+        </div>
+
+        <!-- MENSAJE -->
+        <p id="mensajeLocales" class="mt-6 text-sm font-medium text-gray-600 tracking-wide"></p>
+      </div>
+    </div>
+
+    <!-- JS 🔥 -->
+    <script>
+      let total = {{ total_locales }};
+      let max = 3;
+
+      let contador = document.getElementById("contador");
+      let barra = document.getElementById("barraProgreso");
+      let boton = document.getElementById("btnCrear");
+      let botonCard = document.getElementById("btnCrearCard");
+      let mensaje = document.getElementById("mensajeLocales");
+
+      // 🔢 contador animado
+      let i = 0;
+      let intervalo = setInterval(() => {
+        if (i <= total) {
+          contador.innerText = i;
+          i++;
+        } else {
+          clearInterval(intervalo);
+        }
+      }, 150);
+
+      // 📊 barra
+      let porcentaje = (total / max) * 100;
+      barra.style.width = porcentaje + "%";
+
+      // 🎨 colores
+      if (total >= 3) {
+        barra.classList.add("bg-red-500");
+      } else if (total == 2) {
+        barra.classList.add("bg-yellow-400");
+      } else {
+        barra.classList.add("bg-green-500");
+      }
+
+      // 🚫 ocultar botones
+      if (total >= max) {
+        if (boton) boton.style.display = "none";
+        if (botonCard) botonCard.style.display = "none";
+
+        mensaje.innerHTML = "Ya alcanzaste el máximo de 3 locales ❌";
+        mensaje.classList.add("text-red-500");
+      } else {
+        mensaje.innerHTML = "Recuerda que puedes crear máximo 3 locales 📍";
+      }
+    </script>
+  </body>
+</html>

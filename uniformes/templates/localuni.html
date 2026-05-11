@@ -1,0 +1,126 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Explorar Locales | UniSena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen font-sans">
+
+    <nav class="glass border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+            <a href="{% url 'landing' %}" class="flex items-center gap-2">
+                <img src="{% static 'img/logo.jpeg' %}" class="w-8 h-8 rounded-full">
+                <span class="text-[#125f58] font-black text-xl tracking-tight uppercase">UniSena</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="{% url 'ver_carrito' %}" class="relative p-2 text-[#125f58]">
+                    <i class="bi bi-cart3 text-xl"></i>
+                    <span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{{ cart_count }}</span>
+                </a>
+                <a href="{% url 'landing' %}" class="bg-white/80 text-[#125f58] px-4 py-2 rounded-xl text-sm font-bold hover:bg-white transition shadow-sm">← Regresar</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-12">
+        <header class="mb-12 text-center">
+            <h1 class="text-4xl font-black text-white tracking-tighter uppercase drop-shadow-xl mb-2">Nuestros Locales</h1>
+            <p class="text-white/80 text-sm font-medium max-w-xl mx-auto">Encuentra los puntos autorizados más cercanos.</p>
+        </header>
+
+        <!-- 🔍 FILTROS -->
+        <section class="mb-12">
+            <form method="GET" class="glass p-6 rounded-[2.5rem] shadow-2xl border border-white/20 flex flex-col md:flex-row gap-4 items-end">
+                <div class="flex-grow w-full">
+                    <label class="text-[10px] font-black text-[#125f58] uppercase tracking-widest ml-2 mb-1 block">Nombre</label>
+                    <input type="text" name="nombre" value="{{ search_nombre }}" placeholder="Ej: Confecciones Sena..." 
+                        class="w-full p-4 bg-white/50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#125f58] outline-none transition">
+                </div>
+                <div class="flex-grow w-full">
+                    <label class="text-[10px] font-black text-[#125f58] uppercase tracking-widest ml-2 mb-1 block">Dirección</label>
+                    <input type="text" name="ubicacion" value="{{ search_ubicacion }}" placeholder="Ej: Calle 123..." 
+                        class="w-full p-4 bg-white/50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#125f58] outline-none transition">
+                </div>
+                <div class="flex-grow w-full">
+                    <label class="text-[10px] font-black text-[#125f58] uppercase tracking-widest ml-2 mb-1 block">Hora Apertura</label>
+                    <input type="time" name="apertura" value="{{ search_apertura }}" 
+                        class="w-full p-4 bg-white/50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#125f58] outline-none transition">
+                </div>
+                <button type="submit" class="bg-[#125f58] text-white px-8 py-4 rounded-2xl font-black hover:bg-[#0d4742] transition-all shadow-xl flex items-center gap-2 uppercase tracking-widest text-[10px]">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+                <a href="{% url 'explorar_locales' %}" class="bg-gray-100 text-gray-500 px-4 py-4 rounded-2xl font-bold hover:bg-gray-200 transition text-[10px] uppercase">Limpiar</a>
+            </form>
+        </section>
+
+        <!-- 🏢 GRID DE LOCALES -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {% for local in locales %}
+            <div class="bg-white/90 backdrop-blur-md rounded-[2rem] shadow-xl overflow-hidden border border-white/20 hover:shadow-2xl transition-all duration-500 group flex flex-col animate-fade-in">
+                <div class="h-32 bg-gray-100 relative overflow-hidden">
+                    {% if local.Imagen %}
+                        <img src="{{ local.Imagen.url }}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
+                    {% else %}
+                        <div class="flex items-center justify-center h-full"><i class="bi bi-shop text-gray-200 text-3xl"></i></div>
+                    {% endif %}
+                    <div class="absolute top-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[8px] font-black text-[#125f58] shadow-sm uppercase tracking-widest">
+                        <i class="bi bi-clock"></i> 
+                        {% if local.Horaapertura %} {{ local.Horaapertura|time:"H:i" }} - {{ local.HoraCierre|time:"H:i" }} {% else %} Sin horario {% endif %}
+                    </div>
+                </div>
+                <div class="p-4 flex-grow flex flex-col">
+                    <h3 class="text-base font-black text-gray-800 mb-1 uppercase tracking-tighter truncate">{{ local.Nombre_local }}</h3>
+                    <p class="text-[8px] text-[#125f58] font-black uppercase tracking-widest mb-2 flex items-center gap-1">
+                        <i class="bi bi-person-badge"></i> {{ local.IdUsuario.nombres }}
+                    </p>
+                    <p class="text-gray-500 text-[10px] mb-3 line-clamp-2 leading-tight italic">"{{ local.Descripcion }}"</p>
+                    
+                    <div class="mt-auto space-y-2">
+                        <div class="flex items-center gap-1 text-gray-400 text-[9px] font-bold border-t border-dashed border-gray-100 pt-2 truncate">
+                            <i class="bi bi-geo-alt-fill text-[#125f58]"></i> {{ local.Ubicacion_direccion }}
+                        </div>
+                        <a href="{% url 'ver_productos_local' local.IdLocal %}" class="block w-full text-center py-2.5 bg-[#125f58] text-white rounded-xl font-black uppercase tracking-[0.2em] text-[9px] shadow-lg shadow-[#125f58]/20 hover:bg-[#0d4742] transition-all hover:scale-[1.02] active:scale-95">
+                            Ver Productos
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full bg-white/80 backdrop-blur p-20 rounded-[4rem] text-center border border-dashed border-white/50 shadow-2xl">
+                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="bi bi-shop-window text-5xl text-gray-200"></i>
+                </div>
+                <p class="mt-4 text-gray-500 font-black uppercase tracking-widest text-sm">No encontramos locales con esos filtros.</p>
+                <a href="{% url 'explorar_locales' %}" class="inline-block mt-8 bg-[#125f58] text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl">Ver todos los locales</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- PAGINACIÓN -->
+        {% if locales.has_other_pages %}
+        <div class="mt-12 flex justify-center items-center gap-2">
+            {% if locales.has_previous %}
+                <a href="?page={{ locales.previous_page_number }}&nombre={{ search_nombre }}&ubicacion={{ search_ubicacion }}&apertura={{ search_apertura }}" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-[#125f58] hover:text-white transition">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            {% endif %}
+            <span class="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 text-xs font-black text-[#125f58]">Pág. {{ locales.number }}</span>
+            {% if locales.has_next %}
+                <a href="?page={{ locales.next_page_number }}&nombre={{ search_nombre }}&ubicacion={{ search_ubicacion }}&apertura={{ search_apertura }}" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-[#125f58] hover:text-white transition">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+# Python 
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entorno Virtual
+ven1/
+venv/
+env/
+virtualenv/
+
+# Django
+db.sqlite3
+media/
+*.log
+
+# IDEs y Sistema
+.vscode/
+.idea/
+.DS_Store
+
+# Seguridad
+.env
+
+# Estáticos generados
+staticfiles/
+static_root/
+media_root/

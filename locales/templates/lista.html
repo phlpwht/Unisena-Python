@@ -1,0 +1,297 @@
+{% load static %}
+<!doctype html>
+<html>
+  <head>
+    <title>Locales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+    </style>
+  </head>
+
+  <body
+    class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen font-sans"
+  >
+    <!-- ✅ MENSAJES (SOLO UNO, SIN DUPLICAR) -->
+    {% if messages %}
+    <div
+      id="mensaje-container"
+      class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50"
+    >
+      {% for message in messages %}
+      <div
+        class="bg-white border-l-4 border-[#125f58] text-[#125f58] px-6 py-3 rounded-lg shadow-lg mb-2 animate-fade-in"
+      >
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- HEADER -->
+    <div class="text-center pt-8">
+      <img
+        src="{% static 'img/image.png' %}"
+        class="w-20 mx-auto rounded-full border-4 border-[#125f58] p-1 shadow-md hover:scale-110 transition"
+      />
+
+      <h1 class="text-white text-3xl font-bold tracking-wide drop-shadow-lg">
+        Sistema de Locales
+      </h1>
+
+      <p class="text-white/80 text-sm mt-1">
+        Administra tus locales fácilmente
+      </p>
+    </div>
+
+    <!-- CONTENEDOR -->
+    <div class="max-w-6xl mx-auto px-4 mt-8">
+      <!-- TOP -->
+      <div
+        class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6"
+      >
+        <a
+          href="{% url 'dashboard_vendedor' %}"
+          class="bg-white/80 text-[#125f58] px-5 py-2 rounded-full font-semibold shadow hover:scale-105 transition"
+        >
+          ← Volver
+        </a>
+
+        <h2 class="text-white text-xl font-semibold">Lista de Locales</h2>
+
+        {% if puede_crear %}
+        <a
+          href="{% url 'crear_local' %}"
+          class="bg-white text-[#125f58] px-5 py-2 rounded-full font-semibold shadow-lg hover:scale-105 transition"
+        >
+          + Crear Local
+        </a>
+        {% elif modo == 'crud' %}
+        <button
+          onclick="mostrarLimite()"
+          class="bg-gray-300 text-gray-600 px-5 py-2 rounded-full font-semibold shadow cursor-not-allowed"
+        >
+          + Crear Local
+        </button>
+        {% endif %}
+      </div>
+
+      <!-- GRID -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for local in locales %}
+        <div
+          class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:scale-[1.02] hover:shadow-2xl transition-all duration-300 flex flex-col"
+        >
+          <!-- IMAGEN -->
+          <div class="relative">
+            <!-- 🏷️ ETIQUETA DE ESTADO -->
+            {% if not local.EstaActivo %}
+            <div class="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg z-10 animate-pulse">
+              Desactivado
+            </div>
+            {% endif %}
+
+            <div class="w-full h-52 flex items-center justify-center overflow-hidden {% if not local.EstaActivo %}grayscale opacity-60{% endif %} bg-gray-100">
+              {% if local.Imagen %}
+              <img
+                src="{{ local.Imagen.url }}"
+                class="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+              />
+              {% else %}
+              <span class="text-4xl">🏢</span>
+              {% endif %}
+            </div>
+
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"
+            ></div>
+
+            <h3 class="absolute bottom-3 left-4 text-white text-lg font-bold">
+              {{ local.Nombre_local }}
+            </h3>
+          </div>
+
+          <!-- CONTENIDO -->
+          <div class="p-5 flex flex-col flex-grow">
+            <p class="text-gray-600 text-sm line-clamp-2 flex-grow">
+              {{ local.Descripcion }}
+            </p>
+
+            <p class="text-gray-500 text-xs mt-3 flex items-center gap-1">
+              📍 {{ local.Ubicacion_direccion }}
+            </p>
+
+            <div
+              class="mt-3 inline-flex items-center gap-2 bg-[#125f58]/10 text-[#125f58] text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider"
+            >
+              <span>⏰</span> 
+              {% if local.Horaapertura and local.HoraCierre %}
+              {{local.Horaapertura|time:"H:i" }} - {{ local.HoraCierre|time:"H:i" }} {% else %} Sin
+              horario definido {% endif %}
+            </div>
+
+            <!-- ACCIONES -->
+            <div class="flex gap-2 mt-4">
+              {% if modo == 'crud' %}
+
+              <!-- ✏️ EDITAR (CON MODAL) -->
+              <a
+                href="#"
+                onclick="abrirModal('editar', '{% url 'editar_local' local.IdLocal %}')"
+                class="flex-1 text-center bg-[#125f58] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#0d4742] transition"
+              >
+                ✏️ Editar
+              </a>
+
+              <!-- 🔘 ACTIVAR/DESACTIVAR -->
+              <button
+                type="button"
+                onclick="abrirModalStatus('{{ local.IdLocal }}', '{{ local.Nombre_local }}', {{ local.EstaActivo|yesno:'true,false' }})"
+                class="flex-1 text-center {% if local.EstaActivo %}bg-yellow-500 hover:bg-yellow-600{% else %}bg-gray-500 hover:bg-gray-600{% endif %} text-white py-2 rounded-lg text-sm font-semibold transition"
+              >
+                {% if local.EstaActivo %}⏸️ Desactivar{% else %}▶️ Activar{% endif %}
+              </button>
+
+              <!-- 🗑️ ELIMINAR (POST + MODAL) -->
+              <button
+                type="button"
+                onclick="abrirModalStatus('{{ local.IdLocal }}', '{{ local.Nombre_local }}', 'eliminar')"
+                class="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition"
+              >
+                🗑️ Eliminar
+              </button>
+
+              {% else %}
+
+              <a
+                href="{% url 'detalle_local' local.IdLocal %}"
+                class="w-full text-center bg-[#125f58] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#0d4742] transition"
+              >
+                ℹ️ Ver información (Gestionar)
+              </a>
+
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- 🔥 MODAL CENTRADO -->
+    <div
+      id="modalConfirmacion"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50"
+    >
+      <div
+        class="bg-white rounded-2xl shadow-xl p-6 w-80 text-center animate-fade-in"
+      >
+        <h2 id="modalTitulo" class="text-lg font-bold text-[#125f58] mb-3"></h2>
+
+        <p id="modalTexto" class="text-gray-600 mb-5"></p>
+
+        <div class="flex justify-center gap-4">
+          <button
+            id="btnConfirmar"
+            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+          >
+            Confirmar
+          </button>
+          
+          <button
+            onclick="cerrarModal()"
+            class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🔥 JS PRO -->
+    <script>
+      let accionConfirmada = null;
+
+      function abrirModal(tipo, url = null, form = null) {
+        const modal = document.getElementById("modalConfirmacion");
+        const titulo = document.getElementById("modalTitulo");
+        const texto = document.getElementById("modalTexto");
+        const btn = document.getElementById("btnConfirmar");
+
+        modal.classList.remove("hidden");
+
+        if (tipo === "eliminar") {
+          titulo.innerText = "🗑️ Eliminar Local";
+          texto.innerText = "¿Seguro que deseas eliminar este local?";
+          btn.classList.remove("bg-[#125f58]");
+          btn.classList.add("bg-red-500");
+
+          accionConfirmada = () => form.submit();
+        }
+
+        if (tipo === "editar") {
+          titulo.innerText = "✏️ Editar Local";
+          texto.innerText = "¿Seguro que deseas editar este local?";
+          btn.classList.remove("bg-red-500");
+          btn.classList.add("bg-[#125f58]");
+
+          accionConfirmada = () => (window.location.href = url);
+        }
+      }
+
+      function cerrarModal() {
+        document.getElementById("modalConfirmacion").classList.add("hidden");
+      }
+
+      document.getElementById("btnConfirmar").addEventListener("click", () => {
+        if (accionConfirmada) accionConfirmada();
+      });
+
+      // 🔥 MENSAJES DESAPARECEN SOLOS
+      setTimeout(() => {
+        const mensaje = document.getElementById("mensaje-container");
+        if (mensaje) {
+          mensaje.style.transition = "opacity 0.5s ease";
+          mensaje.style.opacity = "0";
+          setTimeout(() => mensaje.remove(), 500);
+        }
+      }, 2000); 
+
+      // FUNCION PARA MOSTRAR ALERTA DE LIMITE DE LOCALES
+      function mostrarLimite() {
+        const container = document.createElement("div");
+        container.className =
+          "fixed top-5 left-1/2 transform -translate-x-1/2 z-50";
+
+        container.innerHTML = `
+      <div class="bg-white border-l-4 border-red-500 text-red-600 px-6 py-3 rounded-lg shadow-lg animate-fade-in">
+        Ya tienes los locales máximos permitidos ❌
+      </div>
+    `;
+
+        document.body.appendChild(container);
+
+        setTimeout(() => {
+          container.style.transition = "opacity 0.5s ease";
+          container.style.opacity = "0";
+          setTimeout(() => container.remove(), 500);
+        }, 4000);
+      }
+    </script>
+    {% include 'actdesac.html' %}
+  </body>
+</html>

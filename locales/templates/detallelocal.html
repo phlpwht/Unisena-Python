@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Detalle Local - Unisena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      body {
+        background: linear-gradient(135deg, #125f58, #d8f5e0);
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen font-sans">
+    <!-- HEADER -->
+    <div class="text-center pt-6">
+      <h1 class="text-white text-3xl md:text-4xl font-bold drop-shadow-lg">
+        {{ local.Nombre_local }}
+      </h1>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-4 mt-6">
+      <!-- LAYOUT PRINCIPAL -->
+      <div class="flex flex-col md:flex-row gap-6">
+        <!-- 🧭 MENÚ IZQUIERDO -->
+        <div class="md:w-1/4 bg-white rounded-2xl shadow-lg p-4">
+
+  <!-- 🔙 VOLVER -->
+  <a
+    href="{% url 'administrar_locales' %}"
+    class="block mb-4 text-center bg-[#125f58] text-white py-2 rounded-lg font-semibold hover:bg-[#0d4742] transition"
+  >
+    ← Volver
+  </a>
+
+  <h2 class="text-[#125f58] font-bold mb-4 text-center">Gestión</h2>
+
+  <div class="flex flex-col gap-3">
+    <a href="{% url 'detalle_local' local.IdLocal %}?crear=1"
+      class="bg-gray-100 hover:bg-[#125f58] hover:text-white p-3 rounded-lg transition">
+      ➕ Nueva Prenda
+    </a>
+    <a href="{% url 'detalle_local' local.IdLocal %}?inventario=1"
+    class="bg-gray-100 hover:bg-[#125f58] hover:text-white p-3 rounded-lg transition">
+    📦 Inventario
+    </a>
+    <a href="{% url 'bulk_upload_prendas' local.IdLocal %}"
+      class="bg-gray-100 hover:bg-[#125f58] hover:text-white p-3 rounded-lg transition">
+      ⬆️ Carga Masiva
+    </a>
+
+    <a href="{% url 'detalle_local' local.IdLocal %}?pedidos=1" class="bg-gray-100 hover:bg-[#125f58] hover:text-white p-3 rounded-lg transition">
+      🛒 Pedidos 
+    </a>
+    
+  </div>
+
+  <!-- SEPARADOR -->
+  <hr class="my-4">
+
+  <!-- CONSEJOS -->
+  <div id="panel-consejos">
+    <h3 class="text-[#125f58] font-bold mb-2">💡 Consejos Para Uniforme</h3>
+    <ul class="text-sm text-gray-600 space-y-2">
+      <li>✔ Nombre atractivo</li>
+      <li>✔ Descripción clara</li>
+      <li>✔ Imagen de calidad</li>
+      <li>✔ Talla y stock correctos</li>
+    </ul>
+  </div>
+
+  <!-- PREVIEW -->
+  <div id="panel-preview" class="hidden">
+    <h3 class="text-center text-[#125f58] font-bold mb-2 uppercase text-[10px] tracking-widest">Vista previa</h3>
+
+    <div class="bg-gray-50 border border-gray-100 rounded-xl overflow-hidden shadow-sm max-w-[200px] mx-auto">
+      <div class="h-32 bg-gray-200 flex items-center justify-center overflow-hidden">
+        <img id="previewImagenCardSide" class="hidden w-full h-full object-cover">
+        <span id="placeholder-img" class="text-gray-400 text-2xl">👕</span>
+      </div>
+      <div class="p-3">
+        <div class="flex justify-between items-start mb-2">
+          <h4 id="previewNombre" class="font-bold text-gray-800 text-sm leading-tight truncate">Nombre del Uniforme</h4>
+          <span id="previewTalla" class="bg-[#125f58] text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">--</span>
+        </div>
+        <p id="previewDesc" class="text-gray-500 text-xs mb-4 line-clamp-2 italic">Sin descripción aún...</p>
+        
+        <div class="grid grid-cols-1 gap-1 text-[10px]">
+          <div class="bg-white p-2 rounded-lg border border-gray-100">
+            <p class="text-gray-400 uppercase font-semibold">Precio</p>
+            <p id="previewPrecio" class="text-[#125f58] font-bold">$ --</p>
+          </div>
+          <div class="bg-white p-2 rounded-lg border border-gray-100">
+            <p class="text-gray-400 uppercase font-semibold">Stock</p>
+            <p id="previewStock" class="text-gray-700 font-bold">-- unidades</p>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-dashed border-gray-200">
+          <p class="text-[10px] text-gray-400">Material: <span id="previewMaterial" class="text-gray-600 font-medium">--</span></p>
+          <p class="text-[10px] text-gray-400">Tipo: <span id="previewTipo" class="text-gray-600 font-medium">--</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+        <!-- 📦 CONTENIDO DERECHO -->
+        <div id="contenido-derecho" class="md:w-3/4 bg-white rounded-2xl shadow-lg p-6">
+
+  <!-- BIENVENIDA -->
+ <div id="bienvenida" class="text-center mt-40 {% if mostrar_inventario or mostrar_formulario or prenda or mostrar_pedidos %}hidden{% endif %}">
+  <h2 class="text-[#125f58] text-xl font-bold mb-2">Bienvenido 👋</h2>
+  <p class="text-gray-500 text-sm">
+    Selecciona una opción del menú para gestionar tus uniformes.
+  </p>
+</div>
+
+  <!-- FORMULARIO -->
+<div id="formulario-prenda" class="{% if not prenda and not mostrar_formulario %}hidden{% endif %}">
+  <div class="mb-6 border-b pb-4">
+      <h2 class="text-2xl text-center font-bold text-[#125f58]">
+          {% if prenda.idPrenda %}Editar Uniforme{% else %}Nueva Prenda de Uniforme{% endif %}
+      </h2>
+      <p class="text-gray-500 text-center xt-sm">Asegúrate de que toda la información sea correcta para tus clientes.</p>
+  </div>
+  {% include "formprenda.html" %}
+</div>
+{% if messages %}
+<div id="mensaje-popup" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
+  <div class="bg-green-100 text-green-800 p-4 rounded shadow-lg text-center font-semibold pointer-events-auto">
+    {% for message in messages %}
+      {{ message }}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+<div id="inventario-panel" class="{% if not mostrar_inventario %}hidden{% endif %}">
+  {% include "listainventario.html" %}
+</div>
+<div id="pedidos-panel" class="{% if not mostrar_pedidos %}hidden{% endif %}">
+  {% include "pedidoslocal.html" %}
+</div>
+
+</div>
+        </div>
+      </div>
+    </div>
+<script>
+// Desaparecer popup después de 3 segundos
+window.addEventListener('DOMContentLoaded', () => {
+  const popup = document.getElementById('mensaje-popup');
+  if(popup) {
+    setTimeout(() => {
+      popup.style.transition = 'opacity 0.3s';
+      popup.style.opacity = '0';
+      setTimeout(() => popup.remove(), 300);
+    }, 2500); // 2 segundos antes de desaparecer
+  }
+
+  // Fix para la imagen de vista previa que mencionaste
+  const previewImg = document.getElementById("previewImagenCardSide");
+  if (previewImg && !previewImg.src.includes('/media/')) {
+      previewImg.classList.add('hidden');
+  }
+});
+
+function mostrarInventario() {
+  document.getElementById("bienvenida").classList.add("hidden");
+  document.getElementById("formulario-prenda").classList.add("hidden");
+  document.getElementById("inventario-panel").classList.remove("hidden");
+
+  // Limpiar paneles laterales al ver inventario
+  document.getElementById("panel-preview").classList.add("hidden");
+  document.getElementById("panel-consejos").classList.remove("hidden");
+}
+
+function mostrarFormulario() {
+  document.getElementById("bienvenida").classList.add("hidden");
+  document.getElementById("formulario-prenda").classList.remove("hidden");
+
+  document.getElementById("panel-consejos").classList.add("hidden");
+  document.getElementById("panel-preview").classList.remove("hidden");
+
+  document.getElementById("placeholder-img").classList.remove("hidden");
+  // 🛠 Ocultar inventario si estaba abierto
+  document.getElementById("inventario-panel").classList.add("hidden");
+}
+
+function cancelarFormulario() {
+  // Limpiar formulario
+  const form = document.querySelector('#formulario-prenda form');
+  form.reset();
+
+  // Ocultar formulario y mostrar bienvenida
+  const formulario = document.getElementById("formulario-prenda");
+  if (formulario) formulario.classList.add("hidden");
+
+  const bienvenida = document.getElementById("bienvenida");
+  if (bienvenida) bienvenida.classList.remove("hidden");
+
+  // Alternar paneles laterales
+  document.getElementById("panel-consejos").classList.remove("hidden");
+  document.getElementById("panel-preview").classList.add("hidden");
+
+  // Resetear preview a valores base
+  document.getElementById("previewNombre").textContent = "Nombre del Uniforme";
+  document.getElementById("previewDesc").textContent = "Sin descripción aún...";
+  document.getElementById("previewPrecio").textContent = "$ --";
+  document.getElementById("previewTalla").textContent = "--";
+  document.getElementById("previewMaterial").textContent = "--";
+  document.getElementById("previewStock").textContent = "-- unidades";
+  document.getElementById("previewTipo").textContent = "--";
+  
+  const img = document.getElementById("previewImagenCardSide");
+  img.src = "";
+  img.classList.add("hidden");
+  document.getElementById("placeholder-img").classList.remove("hidden");
+
+  // Resetear contador de descripción
+  document.getElementById("charCount").textContent = "0 / 500";
+
+  // Limpiar parámetros de URL para evitar bugs al volver a hacer clic en otras opciones
+  const url = new URL(window.location);
+  url.searchParams.delete("editar");
+  url.searchParams.delete("crear");
+  window.history.replaceState({}, document.title, url);
+}
+// preview en vivo
+document.addEventListener("input", function(e) {
+  if (e.target.name === "nombre") {
+    previewNombre.textContent = e.target.value || "Nombre";
+  }
+  if (e.target.name === "descripcion") {
+    previewDesc.textContent = e.target.value || "Descripción...";
+    
+    // ✍️ Lógica del Contador
+    const count = e.target.value.length;
+    const counterLabel = document.getElementById("charCount");
+    counterLabel.textContent = `${count} / 500`;
+    if (count >= 500) {
+      counterLabel.classList.add("text-red-500", "font-bold");
+    } else {
+      counterLabel.classList.remove("text-red-500", "font-bold");
+    }
+  }
+  if (e.target.name === "precio") {
+    previewPrecio.textContent = "$ " + (e.target.value || "--");
+  }
+  if (e.target.name === "talla") {
+    previewTalla.textContent = (e.target.value || "--");
+  }
+  if (e.target.name === "material") {
+    previewMaterial.textContent = (e.target.value || "--");
+  }
+  if (e.target.name === "stock") {
+    previewStock.textContent = (e.target.value || "--") + " unidades";
+  }
+  if (e.target.name === "tipoPrenda") {
+    document.getElementById("previewTipo").textContent = (e.target.value || "--");
+}
+});
+
+// imagen
+document.addEventListener("change", function(e) {
+  if (e.target.name === "imagen") {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      document.getElementById("previewImagenCardSide").src = url;
+      document.getElementById("previewImagenCardSide").classList.remove("hidden");
+      document.getElementById("placeholder-img").classList.add("hidden");
+    }
+  }
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+
+  // Si venimos por la URL de inventario
+  if (urlParams.get("inventario") === "1") {
+      mostrarInventario();
+  }
+
+  // Si hubo un error de validación y se recargó el formulario
+  {% if mostrar_formulario %}
+    mostrarFormulario();
+  {% endif %}
+  
+  // Si hay datos de prenda (ya sea editando o por error en creación)
+  {% if prenda %}
+    document.getElementById("previewNombre").textContent = "{{ prenda.nombre|default:'Nombre del Uniforme'|escapejs }}";
+    document.getElementById("previewDesc").textContent = "{{ prenda.descripcion|default:'Sin descripción aún...'|escapejs }}";
+    
+    // Usamos variables intermedias para manejar los valores 0 correctamente
+    const valPrecio = "{{ prenda.precio|escapejs }}";
+    document.getElementById("previewPrecio").textContent = "$ " + (valPrecio !== "" ? valPrecio : "--");
+    
+    document.getElementById("previewTalla").textContent = "{{ prenda.talla|default:'--' }}";
+    document.getElementById("previewMaterial").textContent = "{{ prenda.material|default:'--' }}";
+    
+    const valStock = "{{ prenda.stock|escapejs }}";
+    document.getElementById("previewStock").textContent = (valStock !== "" ? valStock : "--") + " unidades";
+    
+    document.getElementById("previewTipo").textContent = "{{ prenda.tipoPrenda|default:'--' }}";
+
+    // La imagen solo se previsualiza desde el servidor si la prenda ya existe (Edición)
+    {% if prenda.idPrenda and prenda.imagen %}
+      document.getElementById("previewImagenCardSide").src = "{{ prenda.imagen.url }}";
+      document.getElementById("previewImagenCardSide").classList.remove("hidden");
+      document.getElementById("placeholder-img").classList.add("hidden");
+    {% endif %}
+    mostrarFormulario();
+    
+    // Inicializar contador si ya hay descripción
+    const descInput = document.getElementById("descInput");
+    if (descInput) {
+        const descVal = descInput.value;
+        document.getElementById("charCount").textContent = `${descVal.length} / 500`;
+    }
+  {% endif %}
+
+  if (urlParams.get("crear") === "1") {
+      mostrarFormulario();
+  }
+});
+</script>
+</body>
+</html>

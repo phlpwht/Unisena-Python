@@ -1,0 +1,148 @@
+{% extends "base_auth.html" %}
+{% block titulo %} Registro | UniSena {% endblock %}
+{% block contenido %}
+
+<h4 class="text-center mb-4">Crear cuenta</h4>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-custom">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<form method="POST">
+  {% csrf_token %}
+  
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <label>Nombres</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-person"></i></span>
+        <input type="text" name="nombres" class="form-control" required />
+      </div>
+    </div>
+    <div class="col-md-6 mb-3">
+      <label>Apellidos</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+        <input type="text" name="apellidos" class="form-control" required />
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label>Correo</label>
+    <div class="input-group">
+      <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+      <input type="email" name="correo" class="form-control" required />
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label>Fecha nacimiento</label>
+    <div class="input-group">
+      <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+      <input type="date" name="fecha_nacimiento" class="form-control" required />
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label>Tipo identificación</label>
+    <div class="input-group">
+      <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+      <select name="tipo_identificacion" class="form-control">
+        <option value="CC">Cédula</option>
+        <option value="TI">Tarjeta identidad</option>
+        <option value="CE">Cédula extranjería</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label>Número identificación</label>
+    <div class="input-group">
+      <span class="input-group-text"><i class="bi bi-hash"></i></span>
+      <input type="text" name="num_identificacion" class="form-control" maxlength="20" required >
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label>Contraseña</label>
+    <div class="input-group">
+      <span class="input-group-text"><i class="bi bi-lock"></i></span>
+      <input type="password" name="password" id="password" class="form-control" required>
+      <button type="button" class="btn btn-outline-secondary" onclick="verPassword()">
+        <i class="bi bi-eye"></i>
+      </button>
+    </div>
+    <div class="progress mt-2" style="height:8px;">
+      <div id="barraSeguridad" class="progress-bar"></div>
+    </div>
+    <small id="textoSeguridad"></small>
+  </div>
+
+  <button class="btn btn-main w-100 text-white mb-3">Registrarse</button>
+
+  <div class="text-center">
+    ¿Ya tienes cuenta?
+    <a href="{% url 'login' %}">Ya tengo cuenta</a>
+  </div>
+</form>
+
+<script>
+  function verPassword() {
+    let input = document.getElementById("password");
+    if (input.type === "password") {
+      input.type = "text";
+    } else {
+      input.type = "password";
+    }
+  }
+
+ let password = document.getElementById("password")
+ let barra = document.getElementById("barraSeguridad")
+ let texto = document.getElementById("textoSeguridad")
+
+ password.addEventListener("keyup", function(){
+ let valor = password.value
+ let fuerza = 0
+ if(valor.length >= 6) fuerza++
+ if(/[A-Z]/.test(valor)) fuerza++
+ if(/[0-9]/.test(valor)) fuerza++
+ if(/[^A-Za-z0-9]/.test(valor)) fuerza++
+
+ if(fuerza == 1) {
+ barra.style.width="25%"
+ barra.className="progress-bar bg-danger"
+ texto.innerHTML="Contraseña débil"
+ }
+ if(fuerza == 2) {
+ barra.style.width="50%"
+ barra.className="progress-bar bg-warning"
+ texto.innerHTML="Contraseña media"
+ }
+ if(fuerza == 3) {
+ barra.style.width="75%"
+ barra.className="progress-bar bg-info"
+ texto.innerHTML="Contraseña buena"
+ }
+ if(fuerza == 4) {
+ barra.style.width="100%"
+ barra.className="progress-bar bg-success"
+ texto.innerHTML="Contraseña fuerte"
+ }
+ })
+
+ setTimeout(function(){
+let alertas = document.querySelectorAll(".alert")
+alertas.forEach(function(alerta){
+alerta.style.transition = "opacity 0.5s"
+alerta.style.opacity = "0"
+setTimeout(function(){
+alerta.remove()
+},500)
+})
+},3000)
+</script>
+
+{% endblock %}

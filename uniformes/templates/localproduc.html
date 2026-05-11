@@ -1,0 +1,140 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Productos de {{ local.Nombre_local }} | UniSena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8fafc; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="font-sans">
+
+    <!-- ✅ MENSAJES CENTRADOS -->
+    {% if messages %}
+    <div id="mensaje-container" class="fixed inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none">
+      {% for message in messages %}
+      <div class="bg-white/95 backdrop-blur-xl border-l-[12px] border-[#125f58] text-[#125f58] px-10 py-8 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] mb-4 animate-fade-in pointer-events-auto text-center">
+        <i class="bi bi-bag-check-fill text-5xl block mb-3"></i>
+        <span class="font-black uppercase tracking-[0.2em] text-sm">{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(() => {
+        const mensaje = document.getElementById("mensaje-container");
+        if (mensaje) {
+          mensaje.style.transition = "opacity 0.5s ease";
+          mensaje.style.opacity = "0";
+          setTimeout(() => mensaje.remove(), 500);
+        }
+      }, 2000);
+    </script>
+    {% endif %}
+
+    <nav class="glass border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+            <a href="{% url 'landing' %}" class="flex items-center gap-2 group">
+                <img src="{% static 'img/logo.jpeg' %}" class="w-8 h-8 rounded-full border border-gray-200">
+                <span class="text-[#125f58] font-black text-xl uppercase tracking-tighter">UniSena</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="{% url 'ver_carrito' %}" class="relative p-2 text-[#125f58]">
+                    <i class="bi bi-cart3 text-xl"></i>
+                    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{{ cart_count }}</span>
+                </a>
+                <a href="{% url 'explorar_locales' %}" class="text-gray-500 hover:text-[#125f58] font-bold text-xs uppercase">← Volver</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-[#125f58] py-12 px-6 text-white text-center relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl translate-x-32 -translate-y-32"></div>
+        <h1 class="text-4xl font-black tracking-tighter uppercase">{{ local.Nombre_local }}</h1>
+        <p class="text-white/70 text-sm mt-2 font-medium"><i class="bi bi-geo-alt"></i> {{ local.Ubicacion_direccion }}</p>
+        <div class="inline-block mt-4 bg-white/10 backdrop-blur px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest">
+            Horario: {{ local.Horaapertura|time:"H:i" }} - {{ local.HoraCierre|time:"H:i" }}
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-10">
+        
+        <!-- FILTROS SIMPLIFICADOS -->
+        <div class="mb-10 flex flex-wrap gap-4 items-center justify-between">
+            <h2 class="text-xl font-black text-[#125f58] uppercase tracking-tighter">Catálogo del Local</h2>
+            <form method="GET" class="flex gap-2">
+                <input type="text" name="search_prenda" value="{{ search_prenda }}" placeholder="Buscar en este local..." 
+                    class="p-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#125f58] outline-none w-64">
+                <button type="submit" class="bg-[#125f58] text-white px-4 py-2 rounded-xl font-bold text-xs uppercase hover:bg-[#0d4742] transition">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- GRID DE TARJETAS PEQUEÑAS -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {% for p in page_obj %}
+            <div class="bg-white rounded-[2rem] p-3 shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-[320px] group animate-fade-in" style="animation-delay: {{ forloop.counter|add:0 }}ms;">
+                <div class="bg-gray-50 rounded-[1.5rem] h-32 overflow-hidden mb-3 relative border border-gray-100">
+                    {% if p.imagen %}
+                        <img src="{{ p.imagen.url }}" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    {% else %}
+                        <div class="flex items-center justify-center h-full"><i class="bi bi-image text-gray-200 text-3xl"></i></div>
+                    {% endif %}
+                    <div class="absolute top-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[8px] font-black text-[#125f58] shadow-sm uppercase">{{ p.talla }}</div>
+                </div>
+                
+                <div class="flex-grow flex flex-col">
+                    <h3 class="font-bold text-gray-800 text-xs line-clamp-2 leading-tight mb-1">{{ p.nombre }}</h3>
+                    <p class="text-[9px] text-gray-400 font-medium italic mb-2">{{ p.material|truncatechars:15 }}</p>
+                    
+                    <div class="mt-auto">
+                        <div class="flex justify-between items-end mb-3">
+                            <span class="text-[#125f58] font-black text-sm leading-none">${{ p.precio|floatformat:0 }}</span>
+                            <span class="text-[8px] font-black {% if p.stock <= 5 %}text-red-600 animate-pulse font-bold{% else %}text-gray-400{% endif %} uppercase">Stock: {{ p.stock }}</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-4 gap-1">
+                            <a href="{% url 'detalle_prenda' p.idPrenda %}" class="col-span-1 bg-gray-50 text-gray-400 p-2 rounded-lg hover:bg-gray-100 transition flex items-center justify-center border border-gray-100">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'agregar_carrito' p.idPrenda %}" class="col-span-3 bg-[#125f58] text-white py-2 rounded-lg text-[9px] font-black text-center uppercase tracking-widest hover:bg-[#0d4742] transition shadow-md flex items-center justify-center gap-1">
+                                <i class="bi bi-cart-plus"></i> Añadir
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full py-20 text-center">
+                <p class="text-gray-400 text-sm font-medium">Este local aún no tiene productos disponibles.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- PAGINACIÓN -->
+        {% if page_obj.has_other_pages %}
+        <div class="mt-12 flex justify-center items-center gap-2">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&search_prenda={{ search_prenda }}" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-[#125f58] hover:text-white transition">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            {% endif %}
+            <span class="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 text-xs font-black text-[#125f58]">Pág. {{ page_obj.number }}</span>
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&search_prenda={{ search_prenda }}" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-[#125f58] hover:text-white transition">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </main>
+
+</body>
+</html>

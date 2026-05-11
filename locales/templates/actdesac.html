@@ -1,0 +1,89 @@
+<!-- MODAL DE ACTIVACIÓN / DESACTIVACIÓN -->
+<div
+  id="modalStatus"
+  class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-[60]"
+>
+  <div class="bg-white rounded-2xl shadow-2xl p-6 w-96 text-center animate-fade-in border-t-4" id="modalBorder">
+    <div class="mb-4">
+        <span id="modalIcon" class="text-4xl"></span>
+    </div>
+    
+    <h2 id="modalStatusTitulo" class="text-xl font-bold text-gray-800 mb-2"></h2>
+    <p id="modalStatusTexto" class="text-gray-600 mb-6 text-sm"></p>
+
+    <form id="formStatus" method="POST" class="space-y-4">
+      {% csrf_token %}
+      <div class="text-left">
+          <label class="text-xs font-bold text-gray-500 uppercase ml-1">Confirma tu contraseña</label>
+          <input 
+            type="password" 
+            name="password" 
+            placeholder="Escribe tu contraseña aquí"
+            class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#125f58] outline-none transition"
+            required
+          >
+      </div>
+
+      <div class="flex justify-center gap-3 pt-2">
+        <button
+          id="btnConfirmarStatus"
+          type="submit"
+          class="flex-1 py-2.5 text-white rounded-xl transition font-semibold shadow-lg"
+        >
+          Confirmar
+        </button>
+
+        <button
+          type="button"
+          onclick="cerrarModalStatus()"
+          class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition font-semibold"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function abrirModalStatus(id, nombre, estaActivo) {
+    const modal = document.getElementById("modalStatus");
+    const titulo = document.getElementById("modalStatusTitulo");
+    const texto = document.getElementById("modalStatusTexto");
+    const btn = document.getElementById("btnConfirmarStatus");
+    const icon = document.getElementById("modalIcon");
+    const border = document.getElementById("modalBorder");
+    const form = document.getElementById("formStatus");
+
+    if (estaActivo === 'eliminar') {
+      titulo.innerText = "Eliminar Local";
+      texto.innerText = `¿Estás TOTALMENTE seguro de eliminar '${nombre}'? Esta acción no se puede deshacer. ⚠️`;
+      icon.innerText = "🗑️";
+      border.style.borderColor = "#ef4444"; // Rojo
+      btn.className = "flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition font-semibold shadow-lg";
+      form.action = `/locales/eliminar/${id}/`;
+    } else if (estaActivo === true) {
+      titulo.innerText = "Desactivar Local";
+      texto.innerText = `¿Estás seguro de desactivar '${nombre}'? No será visible para los clientes.`;
+      icon.innerText = "⏸️";
+      border.style.borderColor = "#f59e0b"; // Amarillo
+      btn.className = "flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl transition font-semibold shadow-lg";
+      form.action = `/locales/toggle-activo/${id}/`;
+    } else {
+      titulo.innerText = "Activar Local";
+      texto.innerText = `¿Deseas activar '${nombre}'? Volverá a estar disponible para todos.`;
+      icon.innerText = "▶️";
+      border.style.borderColor = "#125f58"; // Verde
+      btn.className = "flex-1 py-2.5 bg-[#125f58] hover:bg-[#0d4742] text-white rounded-xl transition font-semibold shadow-lg";
+      form.action = `/locales/toggle-activo/${id}/`;
+    }
+
+    modal.classList.remove("hidden");
+  }
+
+  function cerrarModalStatus() {
+    const modal = document.getElementById("modalStatus");
+    modal.classList.add("hidden");
+    document.querySelector('#formStatus input[name="password"]').value = "";
+  }
+</script>
