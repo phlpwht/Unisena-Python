@@ -168,9 +168,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # Configuraciones adicionales para Allauth
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'none' # Para desarrollo, no pide confirmar correo
 SOCIALACCOUNT_QUERY_EMAIL = True
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -180,9 +181,12 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'online',
+            'prompt': 'select_account',
         }
     }
 }
+
+ACCOUNT_USER_DISPLAY = "usuario.utils.custom_user_display"
 
 # Silenciar advertencia de MySQL/MariaDB sobre restricciones condicionales de Allauth
 SILENCED_SYSTEM_CHECKS = ["models.W036"]

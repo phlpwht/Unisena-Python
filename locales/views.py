@@ -10,6 +10,7 @@ from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 from inventario.models import MovimientoInventario
+from allauth.socialaccount.models import SocialAccount
 
 def lista_locales(request):
     if "usuario_id" not in request.session:
@@ -96,10 +97,16 @@ def eliminar_local(request, id):
     usuario = get_object_or_404(Usuario, id=usuario_id)
     local = get_object_or_404(Local, IdLocal=id, IdUsuario_id=usuario_id)
 
-    if request.method == 'POST':
-        password = request.POST.get('password')
+    # 🚨 VALIDACIÓN: No permitir eliminar si hay pedidos pendientes
+    if Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'EN PROCESO']).exists():
+        messages.error(request, "No se puede eliminar: el local tiene pedidos pendientes.")
+        return redirect('lista_locales')
 
-        if check_password(password, usuario.password):
+
+    if request.method == 'POST':
+        nombre_confirmacion = request.POST.get('nombre_confirmacion')
+
+        if nombre_confirmacion == local.Nombre_local:
             nombre_local = local.Nombre_local
             local.delete()
             
@@ -143,10 +150,10 @@ def eliminar_local(request, id):
             except Exception as e:
                 print(f"🚨 Error enviando correo de eliminación: {e}")
 
-            messages.success(request, "Local eliminado correctamente y notificación enviada 🗑️")
+            messages.success(request, "Local eliminado con éxito.")
         
         else:
-            messages.error(request, "Contraseña incorrecta. No se pudo eliminar el local. ❌")
+            messages.error(request, "El nombre no coincide.")
             
         return redirect('lista_locales')
     return redirect('lista_locales')
@@ -355,11 +362,16 @@ def toggle_activo_local(request, id):
     local = get_object_or_404(Local, IdLocal=id, IdUsuario_id=usuario_id)
 
     if request.method == 'POST':
-        password = request.POST.get('password')
-
         nuevo_estado = not local.EstaActivo
 
-        if check_password(password, usuario.password):
+        # 🚨 VALIDACIÓN: No permitir desactivar si hay pedidos pendientes
+        if not nuevo_estado and Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido='PENDIENTE').exists():
+            messages.error(request, "No se puede desactivar: hay pedidos pendientes.")
+            return redirect('lista_locales')
+
+        nombre_confirmacion = request.POST.get('nombre_confirmacion')
+
+        if nombre_confirmacion == local.Nombre_local:
             local.EstaActivo = nuevo_estado
             local.save()
             
@@ -411,9 +423,9 @@ def toggle_activo_local(request, id):
             except Exception as e:
                 print(f"🚨 Error enviando correo de cambio de estado: {e}")
 
-            messages.success(request, f"Local {estado_str.lower()} con éxito. Se ha enviado un correo de confirmación. ✨")
+            messages.success(request, f"Local {estado_str.lower()} correctamente.")
         else:
-            messages.error(request, "Contraseña incorrecta. No se pudo cambiar el estado del local. ❌")
+            messages.error(request, "El nombre no coincide.")
             
         return redirect('lista_locales')
     

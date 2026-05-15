@@ -11,16 +11,20 @@
     <h2 id="modalStatusTitulo" class="text-xl font-bold text-gray-800 mb-2"></h2>
     <p id="modalStatusTexto" class="text-gray-600 mb-6 text-sm"></p>
 
-    <form id="formStatus" method="POST" class="space-y-4">
+    <form id="formStatus" method="POST" class="space-y-4 text-left">
       {% csrf_token %}
-      <div class="text-left">
-          <label class="text-xs font-bold text-gray-500 uppercase ml-1">Confirma tu contraseña</label>
+      <!-- Campo de confirmación por nombre -->
+      <div id="campoConfirmacionNombreStatus" class="mb-4">
+          <label class="block text-xs text-gray-500 mb-1">Escribe <span id="nombreRequeridoStatus" class="font-bold text-red-600"></span> para confirmar:</label>
           <input 
-            type="password" 
-            name="password" 
-            placeholder="Escribe tu contraseña aquí"
+            type="text" 
+            id="confirmacionNombreInputStatus" 
+            name="nombre_confirmacion"
             class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#125f58] outline-none transition"
             required
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Nombre del local"
           >
       </div>
 
@@ -53,30 +57,45 @@
     const btn = document.getElementById("btnConfirmarStatus");
     const icon = document.getElementById("modalIcon");
     const border = document.getElementById("modalBorder");
+    const campoConfirm = document.getElementById("campoConfirmacionNombreStatus");
+    const inputConfirm = document.getElementById("confirmacionNombreInputStatus");
+    const labelNombre = document.getElementById("nombreRequeridoStatus");
     const form = document.getElementById("formStatus");
 
-    if (estaActivo === 'eliminar') {
-      titulo.innerText = "Eliminar Local";
-      texto.innerText = `¿Estás TOTALMENTE seguro de eliminar '${nombre}'? Esta acción no se puede deshacer. ⚠️`;
-      icon.innerText = "🗑️";
-      border.style.borderColor = "#ef4444"; // Rojo
-      btn.className = "flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition font-semibold shadow-lg";
-      form.action = `/locales/eliminar/${id}/`;
-    } else if (estaActivo === true) {
+    // Resetear estado inicial del modal
+    campoConfirm.classList.remove("hidden"); // Siempre mostrar el campo de confirmación de nombre
+    inputConfirm.value = "";
+    btn.disabled = true;
+    btn.classList.add("opacity-50", "cursor-not-allowed");
+
+    if (estaActivo === true) { // Desactivar
       titulo.innerText = "Desactivar Local";
       texto.innerText = `¿Estás seguro de desactivar '${nombre}'? No será visible para los clientes.`;
       icon.innerText = "⏸️";
       border.style.borderColor = "#f59e0b"; // Amarillo
-      btn.className = "flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl transition font-semibold shadow-lg";
+      btn.classList.remove("bg-[#125f58]", "hover:bg-[#0d4742]"); // Limpiar clases de activar
+      btn.classList.add("bg-yellow-500", "hover:bg-yellow-600"); // Añadir clases de desactivar
       form.action = `/locales/toggle-activo/${id}/`;
-    } else {
+    } else { // Activar
       titulo.innerText = "Activar Local";
       texto.innerText = `¿Deseas activar '${nombre}'? Volverá a estar disponible para todos.`;
       icon.innerText = "▶️";
       border.style.borderColor = "#125f58"; // Verde
-      btn.className = "flex-1 py-2.5 bg-[#125f58] hover:bg-[#0d4742] text-white rounded-xl transition font-semibold shadow-lg";
+      btn.classList.remove("bg-yellow-500", "hover:bg-yellow-600"); // Limpiar clases de desactivar
+      btn.classList.add("bg-[#125f58]", "hover:bg-[#0d4742]"); // Añadir clases de activar
       form.action = `/locales/toggle-activo/${id}/`;
     }
+    
+    labelNombre.innerText = nombre;
+    inputConfirm.oninput = () => {
+      if (inputConfirm.value === nombre) {
+        btn.classList.remove("opacity-50", "cursor-not-allowed");
+        btn.disabled = false;
+      } else {
+        btn.classList.add("opacity-50", "cursor-not-allowed");
+        btn.disabled = true;
+      }
+    };
 
     modal.classList.remove("hidden");
   }
@@ -84,6 +103,10 @@
   function cerrarModalStatus() {
     const modal = document.getElementById("modalStatus");
     modal.classList.add("hidden");
-    document.querySelector('#formStatus input[name="password"]').value = "";
+    document.getElementById("confirmacionNombreInputStatus").value = "";
+    // Reset button state on close
+    const btn = document.getElementById("btnConfirmarStatus");
+    btn.disabled = false; // Ensure it's not disabled for the next open
+    btn.classList.remove("opacity-50", "cursor-not-allowed"); // Remove visual disabled state
   }
 </script>

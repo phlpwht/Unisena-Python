@@ -7,6 +7,7 @@ from uniformes.models import Pedido, EstadoPedido
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail,EmailMultiAlternatives
 from django.conf import settings
+from django.contrib.auth import logout
 import random
 from django.utils.timezone import now
 from datetime import timedelta
@@ -30,7 +31,7 @@ def login_view(request):
                 print("ROL DEL USUARIO:", usuario.rol_id)
 
                 request.session["usuario_id"] = usuario.id
-                request.session["usuario_nombre"] = usuario.nombres
+                request.session["usuario_nombre"] = f"{usuario.nombres} {usuario.apellidos}"
                 request.session["usuario_rol"] = usuario.rol.nombre_rol
 
 
@@ -157,7 +158,7 @@ def inicio_vendedor(request):
     return redirect("inicio_cliente")
 
 def logout_view(request):
-    request.session.flush()
+    logout(request)
     return redirect("landing")
 
 def registro_view(request):

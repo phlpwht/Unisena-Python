@@ -140,7 +140,7 @@
             >
               <span>⏰</span> 
               {% if local.Horaapertura and local.HoraCierre %}
-              {{local.Horaapertura|time:"H:i" }} - {{ local.HoraCierre|time:"H:i" }} {% else %} Sin
+              {{ local.Horaapertura|time:"H:i" }} - {{ local.HoraCierre|time:"H:i" }} {% else %} Sin
               horario definido {% endif %}
             </div>
 
@@ -169,7 +169,7 @@
               <!-- 🗑️ ELIMINAR (POST + MODAL) -->
               <button
                 type="button"
-                onclick="abrirModalStatus('{{ local.IdLocal }}', '{{ local.Nombre_local }}', 'eliminar')"
+                onclick="abrirModal('eliminar', '{% url 'eliminar_local' local.IdLocal %}', '{{ local.Nombre_local }}')"
                 class="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition"
               >
                 🗑️ Eliminar
@@ -192,6 +192,12 @@
       </div>
     </div>
 
+    <!-- Formulario oculto para ejecución segura de eliminación -->
+    <form id="formEliminarGlobal" method="POST" class="hidden">
+      {% csrf_token %}
+      <input type="hidden" name="nombre_confirmacion" id="inputNombreOculto">
+    </form>
+
     <!-- 🔥 MODAL CENTRADO -->
     <div
       id="modalConfirmacion"
@@ -203,6 +209,17 @@
         <h2 id="modalTitulo" class="text-lg font-bold text-[#125f58] mb-3"></h2>
 
         <p id="modalTexto" class="text-gray-600 mb-5"></p>
+
+        <!-- Campo de confirmación por nombre -->
+        <div id="campoConfirmacionNombre" class="hidden mb-4 text-left">
+          <label class="block text-xs text-gray-500 mb-1">Escribe <span id="nombreRequerido" class="font-bold text-red-600"></span> para confirmar:</label>
+          <input 
+            type="text" 
+            id="confirmacionNombreInput" 
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+            placeholder="Nombre del local"
+          >
+        </div>
 
         <div class="flex justify-center gap-4">
           <button
@@ -226,28 +243,54 @@
     <script>
       let accionConfirmada = null;
 
-      function abrirModal(tipo, url = null, form = null) {
+      function abrirModal(tipo, url = null, extra = null) {
         const modal = document.getElementById("modalConfirmacion");
         const titulo = document.getElementById("modalTitulo");
         const texto = document.getElementById("modalTexto");
         const btn = document.getElementById("btnConfirmar");
+        const campoConfirm = document.getElementById("campoConfirmacionNombre");
+        const inputConfirm = document.getElementById("confirmacionNombreInput");
+        const labelNombre = document.getElementById("nombreRequerido");
 
         modal.classList.remove("hidden");
+        campoConfirm.classList.add("hidden");
+        btn.disabled = false;
+        btn.classList.remove("opacity-50", "cursor-not-allowed");
 
         if (tipo === "eliminar") {
           titulo.innerText = "🗑️ Eliminar Local";
-          texto.innerText = "¿Seguro que deseas eliminar este local?";
-          btn.classList.remove("bg-[#125f58]");
-          btn.classList.add("bg-red-500");
+          texto.innerText = "Esta acción eliminará permanentemente el local y su inventario.";
+          campoConfirm.classList.remove("hidden");
+          labelNombre.innerText = extra;
+          inputConfirm.value = "";
+          
+          // Bloquear botón inicialmente
+          btn.className = "px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition opacity-50 cursor-not-allowed";
+          btn.disabled = true;
 
-          accionConfirmada = () => form.submit();
+          inputConfirm.oninput = () => {
+            if (inputConfirm.value === extra) {
+              btn.classList.remove("opacity-50", "cursor-not-allowed");
+              btn.disabled = false;
+            } else {
+              btn.classList.add("opacity-50", "cursor-not-allowed");
+              btn.disabled = true;
+            }
+          };
+
+          accionConfirmada = () => {
+            const form = document.getElementById("formEliminarGlobal");
+            const inputOculto = document.getElementById("inputNombreOculto");
+            form.action = url;
+            inputOculto.value = inputConfirm.value;
+            form.submit();
+          };
         }
 
         if (tipo === "editar") {
           titulo.innerText = "✏️ Editar Local";
           texto.innerText = "¿Seguro que deseas editar este local?";
-          btn.classList.remove("bg-red-500");
-          btn.classList.add("bg-[#125f58]");
+          btn.className = "px-4 py-2 bg-[#125f58] text-white rounded-lg hover:bg-[#0d4742] transition";
 
           accionConfirmada = () => (window.location.href = url);
         }

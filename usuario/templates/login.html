@@ -93,14 +93,14 @@
     let alertas = document.querySelectorAll(".alert");
 
     alertas.forEach(function (alerta) {
-      alerta.style.transition = "opacity 0.5s";
+      alerta.style.transition = "opacity 0.5s ease";
       alerta.style.opacity = "0";
 
       setTimeout(function () {
         alerta.remove();
-      }, 500);
+      }, 600);
     });
-  }, 3000);
+  }, 5000);
 </script>
 
 {% endblock %}

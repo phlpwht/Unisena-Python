@@ -89,7 +89,7 @@
           mensaje.style.opacity = "0";
           setTimeout(() => mensaje.remove(), 500);
         }
-      }, 2000);
+      }, 5000);
     </script>
     {% endif %}
 
@@ -157,7 +157,9 @@
           {% if request.session.usuario_rol == "Cliente" %}
           <a href="{% url 'ver_carrito' %}" class="p-2 text-gray-500 hover:text-[#125f58] hover:bg-gray-100 rounded-full transition relative">
             <i class="bi bi-cart2 text-xl"></i>
+            {% if cart_count > 0 %}
             <span class="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-lg">{{ cart_count }}</span>
+            {% endif %}
           </a>
           {% endif %}
 
@@ -335,7 +337,7 @@
         container.innerHTML = '';
 
         seleccionados.forEach(p => {
-          const cartButton = usuarioRol !== 'Vendedor' ? `
+          const cartButton = usuarioRol === 'Cliente' ? `
             <a href="/uniformes/carrito/agregar/${p.id}/" class="bg-[#125f58] text-white p-2 rounded-xl hover:bg-[#0d4742] transition-all shadow-md flex items-center justify-center ml-2 px-3"><i class="bi bi-cart-plus text-lg"></i></a>
           ` : '';
 
