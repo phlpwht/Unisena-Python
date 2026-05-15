@@ -82,13 +82,6 @@
       input.type = "password";
     }
   }
-
-  history.pushState(null, null, location.href);
-
-  window.onpopstate = function () {
-    history.go(1);
-  };
-
   setTimeout(function () {
     let alertas = document.querySelectorAll(".alert");
 

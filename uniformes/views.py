@@ -429,12 +429,14 @@ def catalogo_prendas(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Conteo seguro de items en el carrito
-    carrito = request.session.get('carrito', {})
-    if isinstance(carrito, dict):
-        cart_count = sum(carrito.values())
-    else:
-        cart_count = len(carrito) if isinstance(carrito, list) else 0
+    # Conteo seguro de items en el carrito para Clientes y Anónimos
+    cart_count = 0
+    if rol != "Vendedor":
+        carrito = request.session.get('carrito', {})
+        if isinstance(carrito, dict):
+            cart_count = sum(carrito.values())
+        else:
+            cart_count = len(carrito) if isinstance(carrito, list) else 0
 
     return render(request, "cardsuni.html", {
         "nombre": nombre,
@@ -458,7 +460,16 @@ def catalogo_prendas(request):
 def detalle_prenda(request, id_prenda):
     prenda = get_object_or_404(Prendas, pk=id_prenda)
     recomendados = Prendas.objects.filter(idLocal__EstaActivo=True).exclude(pk=id_prenda).order_by('?')[:15]
-    cart_count = len(request.session.get('carrito', []))
+
+    # Conteo seguro para Clientes y Anónimos
+    cart_count = 0
+    if request.session.get("usuario_rol") != "Vendedor":
+        carrito = request.session.get('carrito', {})
+        if isinstance(carrito, dict):
+            cart_count = sum(carrito.values())
+        else:
+            cart_count = len(carrito) if isinstance(carrito, list) else 0
+
     return render(request, "detalleuniforme.html", {"prenda": prenda, "recomendados": recomendados, "cart_count": cart_count})
 
 def agregar_carrito(request, id_prenda):
@@ -466,8 +477,8 @@ def agregar_carrito(request, id_prenda):
         messages.warning(request, "Debes iniciar sesión para agregar productos al carrito 🔒")
         return redirect('login')
 
-    if request.session.get("usuario_rol") == "Vendedor":
-        messages.error(request, "Los vendedores no pueden realizar compras ni añadir productos al carrito 🚫")
+    if request.session.get("usuario_rol") != "Cliente":
+        messages.error(request, "Solo los clientes pueden añadir productos al carrito 🚫")
         return redirect(request.META.get('HTTP_REFERER', reverse('catalogo_prendas')))
 
     # Cambiamos carrito a diccionario para soportar cantidades: {id_prenda: cantidad}
@@ -502,6 +513,11 @@ def eliminar_del_carrito(request, id_prenda):
     return redirect('ver_carrito')
 
 def ver_carrito(request):
+    # Solo bloqueamos a los Vendedores
+    if request.session.get("usuario_rol") == "Vendedor":
+        messages.error(request, "Los vendedores no pueden gestionar carritos.")
+        return redirect('landing')
+
     carrito = request.session.get('carrito', {})
     if not isinstance(carrito, dict): 
         # Migración segura si antes era una lista
@@ -796,12 +812,14 @@ def explorar_locales(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Conteo seguro
-    carrito = request.session.get('carrito', {})
-    if isinstance(carrito, dict):
-        cart_count = sum(carrito.values())
-    else:
-        cart_count = len(carrito) if isinstance(carrito, list) else 0
+    # Conteo seguro para Clientes y Anónimos
+    cart_count = 0
+    if request.session.get("usuario_rol") != "Vendedor":
+        carrito = request.session.get('carrito', {})
+        if isinstance(carrito, dict):
+            cart_count = sum(carrito.values())
+        else:
+            cart_count = len(carrito) if isinstance(carrito, list) else 0
 
     return render(request, "localuni.html", {
         "locales": page_obj,
@@ -849,12 +867,14 @@ def ver_productos_local(request, id_local):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Conteo seguro
-    carrito = request.session.get('carrito', {})
-    if isinstance(carrito, dict):
-        cart_count = sum(carrito.values())
-    else:
-        cart_count = len(carrito) if isinstance(carrito, list) else 0
+    # Conteo seguro para Clientes y Anónimos
+    cart_count = 0
+    if request.session.get("usuario_rol") != "Vendedor":
+        carrito = request.session.get('carrito', {})
+        if isinstance(carrito, dict):
+            cart_count = sum(carrito.values())
+        else:
+            cart_count = len(carrito) if isinstance(carrito, list) else 0
 
     return render(request, "localproduc.html", {
         "local": local,

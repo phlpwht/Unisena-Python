@@ -8,7 +8,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail,EmailMultiAlternatives
 from django.conf import settings
 from django.contrib.auth import logout
-import random
+import random, datetime
 from django.utils.timezone import now
 from datetime import timedelta
 from django.db.models import OuterRef, Subquery
@@ -17,6 +17,11 @@ from django.views.decorators.cache import never_cache
 
 
 def login_view(request):
+
+    # Si el usuario llega desde un botón de "Añadir al carrito" sin estar logueado
+    # le mostramos el mensaje de advertencia de forma proactiva.
+    if not request.session.get("usuario_id") and request.GET.get("auth") == "1":
+        messages.warning(request, "Debes iniciar sesión para agregar productos al carrito 🔒")
 
     if request.method == "POST":
 
@@ -77,12 +82,14 @@ def landing(request):
     rol = request.session.get("usuario_rol")
     usuario_id = request.session.get("usuario_id")
     
-    # Conteo coherente del carrito (soporta diccionarios y listas)
-    carrito = request.session.get('carrito', {})
-    if isinstance(carrito, dict):
-        cart_count = sum(carrito.values())
-    else:
-        cart_count = len(carrito) if isinstance(carrito, list) else 0
+    # Calculamos el carrito para Clientes o usuarios no logueados (Anónimos)
+    cart_count = 0
+    if rol != "Vendedor":
+        carrito = request.session.get('carrito', {})
+        if isinstance(carrito, dict):
+            cart_count = sum(carrito.values())
+        else:
+            cart_count = len(carrito) if isinstance(carrito, list) else 0
 
     # Contar pedidos donde el estado MÁS RECIENTE sea 'PENDIENTE'
     pedidos_pendientes_count = 0
@@ -123,12 +130,14 @@ def inicio_cliente(request):
     rol = request.session.get("usuario_rol")
     usuario_id = request.session.get("usuario_id")
 
-    # Conteo coherente del carrito
-    carrito = request.session.get('carrito', {})
-    if isinstance(carrito, dict):
-        cart_count = sum(carrito.values())
-    else:
-        cart_count = len(carrito) if isinstance(carrito, list) else 0
+    # Calculamos el carrito para Clientes o usuarios no logueados
+    cart_count = 0
+    if rol != "Vendedor":
+        carrito = request.session.get('carrito', {})
+        if isinstance(carrito, dict):
+            cart_count = sum(carrito.values())
+        else:
+            cart_count = len(carrito) if isinstance(carrito, list) else 0
 
     # 🛒 Obtenemos uniformes de locales que estén activos para que siempre aparezcan
     prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True).select_related('idLocal', 'idLocal__IdUsuario')
@@ -172,6 +181,30 @@ def registro_view(request):
         tipo_identificacion = request.POST["tipo_identificacion"]
         num_identificacion = request.POST["num_identificacion"]
         password = request.POST["password"]
+
+        # --- VALIDACIÓN DE FECHA DE NACIMIENTO ---
+        try:
+            # Convertimos la cadena de la fecha en un objeto de fecha
+            fecha_nac_dt = datetime.datetime.strptime(fecha_nacimiento, '%Y-%m-%d').date()
+            hoy = now().date()
+            
+            # 1. Que no sea mayor que el año actual (Fecha futura)
+            if fecha_nac_dt > hoy:
+                messages.error(request, "❌ La fecha de nacimiento no puede ser mayor que la fecha actual.")
+                return render(request, "registro.html")
+            
+            # 2. Que no sea "menor" de 60 años (Interpretado como: Máximo 60 años de edad)
+            # Calculamos la edad exacta
+            edad = hoy.year - fecha_nac_dt.year - ((hoy.month, hoy.day) < (fecha_nac_dt.month, fecha_nac_dt.day))
+            
+            if edad > 70:
+                messages.error(request, "❌ Lo sentimos, no puedes registrarte si tienes más de 70 años.")
+                return render(request, "registro.html")
+                
+        except (ValueError, TypeError):
+            messages.error(request, "❌ Formato de fecha de nacimiento no válido.")
+            return render(request, "registro.html")
+        # --- FIN VALIDACIÓN ---
 
         if Usuario.objects.filter(num_identificacion=num_identificacion).exists():
             messages.error(request, "El número de identificación ya está registrado.")

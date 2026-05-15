@@ -48,11 +48,11 @@
             <div class="bg-gray-800 p-8 rounded-[2.5rem] shadow-xl text-white flex flex-col justify-center print:bg-white print:text-black print:border print:border-gray-200">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 text-center">Gestionar Estado</p>
                 
-                <form method="POST" class="space-y-3 no-print">
+                <form action="{% url 'detalle_pedido_vendedor' local.IdLocal pedido.idPedido %}" method="POST" class="space-y-3 no-print">
                     {% csrf_token %}
                     <select name="nuevo_estado" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#125f58]">
                         {% for val, label in estados_pedido %}
-                        <option value="{{ val }}" class="text-gray-800" {% if pedido.estado.estado_pedido == val %}selected{% endif %}>
+                        <option value="{{ val }}" class="text-gray-800" {% if pedido.estado.estado_pedido|upper == val|upper %}selected{% endif %}>
                             {{ label }}
                         </option>
                         {% endfor %}
@@ -64,7 +64,7 @@
                 <div class="hidden print:block text-center font-black uppercase text-xl border-2 border-black p-2 rounded-xl">
                     {{ pedido.estado.estado_pedido }}
                 </div>
-                <p class="text-[9px] text-gray-500 mt-4 italic text-center">Último cambio: {{ pedido.fecha_pedido|date:"d/m/Y" }}</p>
+                <p class="text-[9px] text-gray-500 mt-4 italic text-center">Último cambio: {{ pedido.fecha_actualizacion|date:"d/m/Y H:i" }}</p>
             </div>
         </div>
 

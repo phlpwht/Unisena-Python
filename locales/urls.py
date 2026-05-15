@@ -11,4 +11,5 @@ urlpatterns = [
     path('detalle/<int:id>/', views.detalle_local, name='detalle_local'),
     path('toggle-activo/<int:id>/', views.toggle_activo_local, name='toggle_activo_local'),
     path('prenda/<int:id_prenda>/movimientos/', views.ver_movimientos_prenda, name='ver_movimientos_prenda'),
+    path('pedido/<int:id_local>/<int:id_pedido>/', views.detalle_pedido_vendedor, name='detalle_pedido_vendedor'),
 ]

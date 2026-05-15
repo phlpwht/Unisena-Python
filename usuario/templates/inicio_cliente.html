@@ -154,7 +154,7 @@
           </div>
 
           <!-- 🛒 CARRITO -->
-          {% if request.session.usuario_rol == "Cliente" %}
+          {% if request.session.usuario_id and request.session.usuario_rol == "Cliente" %}
           <a href="{% url 'ver_carrito' %}" class="p-2 text-gray-500 hover:text-[#125f58] hover:bg-gray-100 rounded-full transition relative">
             <i class="bi bi-cart2 text-xl"></i>
             {% if cart_count > 0 %}
@@ -337,8 +337,11 @@
         container.innerHTML = '';
 
         seleccionados.forEach(p => {
-          const cartButton = usuarioRol === 'Cliente' ? `
-            <a href="/uniformes/carrito/agregar/${p.id}/" class="bg-[#125f58] text-white p-2 rounded-xl hover:bg-[#0d4742] transition-all shadow-md flex items-center justify-center ml-2 px-3"><i class="bi bi-cart-plus text-lg"></i></a>
+          const isVendedor = usuarioRol === 'Vendedor';
+          const cartUrl = !usuarioRol ? '/login/?auth=1' : `/uniformes/carrito/agregar/${p.id}/`;
+          
+          const cartButton = !isVendedor ? `
+            <a href="${cartUrl}" class="bg-[#125f58] text-white p-2 rounded-xl hover:bg-[#0d4742] transition-all shadow-md flex items-center justify-center ml-2 px-3"><i class="bi bi-cart-plus text-lg"></i></a>
           ` : '';
 
           const html = `

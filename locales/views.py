@@ -98,7 +98,7 @@ def eliminar_local(request, id):
     local = get_object_or_404(Local, IdLocal=id, IdUsuario_id=usuario_id)
 
     # 🚨 VALIDACIÓN: No permitir eliminar si hay pedidos pendientes
-    if Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'EN PROCESO']).exists():
+    if Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'PROCESO']).exists():
         messages.error(request, "No se puede eliminar: el local tiene pedidos pendientes.")
         return redirect('lista_locales')
 
@@ -364,8 +364,8 @@ def toggle_activo_local(request, id):
     if request.method == 'POST':
         nuevo_estado = not local.EstaActivo
 
-        # 🚨 VALIDACIÓN: No permitir desactivar si hay pedidos pendientes
-        if not nuevo_estado and Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido='PENDIENTE').exists():
+        # 🚨 VALIDACIÓN: No permitir desactivar si hay pedidos pendientes o en proceso
+        if not nuevo_estado and Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'PROCESO']).exists():
             messages.error(request, "No se puede desactivar: hay pedidos pendientes.")
             return redirect('lista_locales')
 
@@ -455,20 +455,23 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
     else:
         return redirect('landing')
 
-    pedido = get_object_or_404(
-        Pedido.objects.distinct(),
-        idPedido=id_pedido,
-        detallepedido__prenda__idLocal=local
-    )
+    # Primero obtenemos el pedido por su ID de forma limpia
+    pedido = get_object_or_404(Pedido.objects.select_related('estado'), idPedido=id_pedido)
+    
+    # Verificamos por seguridad que el pedido contenga al menos un producto de este local
+    if not DetallePedido.objects.filter(pedido=pedido, prenda__idLocal=local).exists():
+        messages.error(request, "No tienes permiso para gestionar este pedido.")
+        return redirect('landing')
     
     if request.method == "POST":
         nuevo_estado_val = request.POST.get("nuevo_estado")
         if nuevo_estado_val:
-            estado_obj = get_object_or_404(EstadoPedido, estado_pedido=nuevo_estado_val)
+            # Normalizamos a mayúsculas para evitar duplicados inconsistentes en la DB
+            estado_obj, _ = EstadoPedido.objects.get_or_create(estado_pedido=nuevo_estado_val.strip().upper())
             pedido.estado = estado_obj
             pedido.save()
             messages.success(request, f"✅ Estado de la orden actualizado a {nuevo_estado_val}")
-            return redirect('detalle_pedido_vendedor', id_local=id_local, id_pedido=id_pedido)
+            return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
 
     detalles = DetallePedido.objects.filter(pedido=pedido, prenda__idLocal=local)
     

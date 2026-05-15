@@ -37,6 +37,7 @@ class Pedido(models.Model):
     num_pedido_cliente = models.PositiveIntegerField(default=1, help_text="Secuencia de pedido para el cliente")
     estado = models.ForeignKey('EstadoPedido', on_delete=models.CASCADE, related_name='pedidos')
     fecha_pedido = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
     fecha_entrega = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):

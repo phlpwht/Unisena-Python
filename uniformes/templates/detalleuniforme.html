@@ -43,10 +43,12 @@
                 <span class="text-[#125f58] font-black text-xl tracking-tight uppercase">UniSena</span>
             </a>
             <div class="flex items-center gap-4">
+                {% if request.session.usuario_rol != "Vendedor" %}
                 <a href="{% url 'ver_carrito' %}" class="relative p-2 text-[#125f58] hover:bg-white/50 rounded-xl transition">
                     <i class="bi bi-cart3 text-xl"></i>
                     <span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-lg">{{ cart_count }}</span>
                 </a>
+                {% endif %}
                 <a href="{% url 'catalogo_prendas' %}" class="bg-white/80 text-[#125f58] px-4 py-2 rounded-xl text-sm font-bold hover:bg-white transition shadow-sm">← Regresar</a>
             </div>
         </div>
@@ -54,8 +56,7 @@
 
     <main class="max-w-5xl mx-auto px-6 py-8">
         <div class="bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20 flex flex-col md:flex-row animate-fade-in">
-            <div class="flex flex-col md:flex-row">
-                <!-- Imagen -->
+            <!-- Imagen -->
                 <div class="md:w-5/12 bg-gray-50/30 flex items-center justify-center p-6 md:p-10">
                     {% if prenda.imagen %}
                         <img src="{{ prenda.imagen.url }}" class="w-full h-auto max-h-[380px] object-contain rounded-[2rem] shadow-2xl transform hover:scale-105 transition duration-500">
@@ -89,8 +90,7 @@
                         <p class="text-gray-600 leading-relaxed text-sm line-clamp-3">{{ prenda.descripcion }}</p>
                     </div>
 
-                    <form action="{% url 'agregar_carrito' prenda.idPrenda %}" method="POST" class="flex flex-col sm:flex-row items-center gap-4 pt-6 border-t border-dashed border-gray-200">
-                        {% csrf_token %}
+                    <div class="flex flex-col sm:flex-row items-center gap-4 pt-6 border-t border-dashed border-gray-200">
                         <div class="flex-grow">
                             <p class="text-4xl font-black text-[#125f58] tracking-tighter">${{ prenda.precio|floatformat:0 }}</p>
                             <p class="text-xs font-bold {% if prenda.stock <= 5 %}text-red-500 animate-pulse{% else %}text-gray-400{% endif %} mt-1 uppercase">
@@ -98,23 +98,41 @@
                             </p>
                         </div>
                         <div class="flex items-center gap-3 w-full sm:w-auto">
+                            {% if request.session.usuario_rol != "Vendedor" and request.session.usuario_id %}
+                            <form action="{% url 'agregar_carrito' prenda.idPrenda %}" method="POST" class="flex items-center gap-3">
+                                {% csrf_token %}
                             <div class="flex flex-col">
                                 <label class="text-[8px] font-black text-gray-400 uppercase mb-1">¿Cuántos deseas?</label>
                                 <input type="number" name="cantidad" id="cantidad" value="1" min="1" max="{{ prenda.stock }}" 
                                     class="w-20 p-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg font-black text-[#125f58] focus:ring-2 focus:ring-[#125f58] outline-none">
                             </div>
-                            <div class="flex flex-col gap-2 w-full sm:w-auto">
+                            <div class="flex flex-col gap-2">
                                 <button type="submit" class="w-full bg-[#125f58] text-white px-8 py-4 rounded-xl font-black hover:bg-[#0d4742] transition-all shadow-xl shadow-[#125f58]/40 flex items-center justify-center gap-2 uppercase tracking-widest text-[10px] active:scale-95">
                                     <i class="bi bi-cart-plus text-lg"></i> Añadir
                                 </button>
-                                <a href="{% url 'ver_productos_local' prenda.idLocal.IdLocal %}" class="w-full text-center py-2 bg-white text-[#125f58] border border-[#125f58] rounded-xl font-black uppercase tracking-widest text-[8px] hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                                    <i class="bi bi-shop"></i> Ir al local
+                            </div>
+                            </form>
+                            {% elif request.session.usuario_rol != "Vendedor" %}
+                            <div class="flex flex-col gap-2 w-full sm:w-auto">
+                                <a href="{% url 'login' %}?auth=1" class="w-full bg-[#125f58] text-white px-8 py-4 rounded-xl font-black hover:bg-[#0d4742] transition-all shadow-xl shadow-[#125f58]/40 flex items-center justify-center gap-2 uppercase tracking-widest text-[10px] active:scale-95">
+                                    <i class="bi bi-cart-plus text-lg"></i> Añadir
                                 </a>
                             </div>
+                            {% endif %}
+                            <div class="flex flex-col gap-2 w-full sm:w-auto">
+                                {% if request.session.usuario_rol == "Vendedor" %}
+                                <a href="{% url 'ver_productos_local' prenda.idLocal.IdLocal %}" class="w-full text-center py-4 px-8 bg-[#125f58] text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-[#0d4742] transition-all flex items-center justify-center gap-2">
+                                    <i class="bi bi-shop"></i> Ir al local
+                                </a>
+                                {% else %}
+                                <a href="{% url 'ver_productos_local' prenda.idLocal.IdLocal %}" class="w-full text-center py-4 px-8 bg-white text-[#125f58] border border-[#125f58] rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                                    <i class="bi bi-shop"></i> Ir al local
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
         </div>
 
         <!-- Te puede interesar -->

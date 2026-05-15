@@ -21,10 +21,12 @@
                 <span class="text-[#125f58] font-black text-xl tracking-tight uppercase">UniSena</span>
             </a>
             <div class="flex items-center gap-4">
+                {% if request.session.usuario_rol == "Cliente" %}
                 <a href="{% url 'ver_carrito' %}" class="relative p-2 text-[#125f58]">
                     <i class="bi bi-cart3 text-xl"></i>
                     <span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">{{ cart_count }}</span>
                 </a>
+                {% endif %}
                 <a href="{% url 'landing' %}" class="bg-white/80 text-[#125f58] px-4 py-2 rounded-xl text-sm font-bold hover:bg-white transition shadow-sm">← Regresar</a>
             </div>
         </div>

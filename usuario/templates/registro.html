@@ -143,6 +143,39 @@ alerta.remove()
 },500)
 })
 },3000)
+
+  // Seleccionamos el campo de fecha por su nombre o ID
+  const inputFecha = document.querySelector('input[name="fecha_nacimiento"]');
+
+  if (inputFecha) {
+    const hoy = new Date();
+    
+    // Calculamos la fecha máxima (Hoy - no permite fechas futuras)
+    const yyyy = hoy.getFullYear();
+    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoy.getDate()).padStart(2, '0');
+    const fechaMax = `${yyyy}-${mm}-${dd}`;
+
+    // Calculamos la fecha mínima (Hace 70 años, para coincidir con tu validación en views.py)
+    // Si prefieres 60 años, simplemente cambia el 70 por 60
+    const fechaMin = `${yyyy - 70}-${mm}-${dd}`;
+
+    // Aplicamos los atributos al input
+    inputFecha.setAttribute("max", fechaMax);
+    inputFecha.setAttribute("min", fechaMin);
+    
+    // Opcional: Evitar que escriban manualmente fechas fuera del rango
+    inputFecha.addEventListener('blur', function() {
+      if (this.value > fechaMax) {
+        this.value = fechaMax;
+        alert("La fecha no puede ser futura.");
+      } else if (this.value < fechaMin) {
+        this.value = fechaMin;
+        alert("Lo sentimos, el límite de edad es de 70 años.");
+      }
+    });
+  }
+
 </script>
 
 {% endblock %}
