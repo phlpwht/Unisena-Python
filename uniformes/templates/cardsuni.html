@@ -89,8 +89,12 @@
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Material</label>
-                            <input type="text" name="material" value="{{ material_sel }}" placeholder="Ej: Algodón..."
-                                class="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-[#125f58] outline-none">
+                            <select name="material" class="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none">
+                                <option value="all">Todos</option>
+                                {% for val, label in prenda_material_choices %}
+                                    <option value="{{ val }}" {% if material_sel == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Talla</label>
@@ -134,7 +138,7 @@
                             <div class="mt-4 pt-4 border-t border-dashed border-gray-100 flex justify-between items-end">
                                 <div class="flex flex-col overflow-hidden max-w-[65%]">
                                     <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Precio</span>
-                                    <span class="text-[#125f58] font-black text-xl leading-none">${{ p.precio|floatformat:0 }}</span>
+                                    <span class="text-[#125f58] font-black text-xl leading-none">COP ${{ p.precio|floatformat:0 }}</span>
                                 </div>
                                 <span class="text-[9px] font-black {% if p.stock <= 5 %}text-red-500 animate-pulse{% else %}text-gray-300{% endif %} uppercase tracking-tighter">Stock: {{ p.stock }}</span>
                             </div>

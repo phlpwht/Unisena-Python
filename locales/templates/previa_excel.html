@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Previa de Exportación Excel | {{ local.Nombre_local }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-12">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 border border-gray-200">
+            <!-- HEADER -->
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b pb-6">
+                <div>
+                    <h1 class="text-2xl font-black text-[#125f58] uppercase">Vista Previa del Archivo Excel</h1>
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Verifica los datos antes de descargar el archivo .xlsx</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{% url 'exportar_ventas_excel' local.IdLocal %}?p_fecha_inicio={{ p_fecha_inicio }}&p_fecha_fin={{ p_fecha_fin }}&p_estado={{ p_estado }}" 
+                       class="bg-green-600 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-xl flex items-center gap-2">
+                        <i class="bi bi-download"></i> Confirmar y Descargar Excel
+                    </a>
+                    <button onclick="window.close()" class="bg-gray-200 text-gray-600 px-6 py-3 rounded-xl font-bold text-xs uppercase hover:bg-gray-300 transition">
+                        Cerrar Previa
+                    </button>
+                </div>
+            </div>
+
+            <!-- SIMULACIÓN DE EXCEL -->
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                <table class="w-full text-left border-collapse bg-white">
+                    <thead>
+                        <tr class="bg-gray-100 border-b border-gray-300">
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase">A | ID Pedido</th>
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase">B | Fecha</th>
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase">C | Cliente</th>
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase">D | Producto</th>
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase">E | Talla</th>
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase text-center">F | Cant.</th>
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase text-right">G | Precio Unit.</th>
+                            <th class="p-3 border-r border-gray-300 text-[10px] font-bold text-gray-500 uppercase text-right">H | Total Item</th>
+                            <th class="p-3 text-[10px] font-bold text-gray-500 uppercase">I | Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-xs font-medium text-gray-700">
+                        {% for d in detalles %}
+                        <tr class="border-b border-gray-200 hover:bg-blue-50/30 transition-colors">
+                            <td class="p-3 border-r border-gray-200 bg-gray-50/50 text-gray-400 font-bold">#{{ d.pedido.idPedido|stringformat:"04d" }}</td>
+                            <td class="p-3 border-r border-gray-200">{{ d.pedido.fecha_pedido|date:"d/m/Y H:i" }}</td>
+                            <td class="p-3 border-r border-gray-200 uppercase">{{ d.pedido.usuario.nombres }} {{ d.pedido.usuario.apellidos }}</td>
+                            <td class="p-3 border-r border-gray-200 font-bold">{{ d.prenda.nombre }}</td>
+                            <td class="p-3 border-r border-gray-200 text-center">{{ d.talla }}</td>
+                            <td class="p-3 border-r border-gray-200 text-center">{{ d.cantidad }}</td>
+                            <td class="p-3 border-r border-gray-200 text-right">${{ d.prenda.precio|floatformat:0 }}</td>
+                            <td class="p-3 border-r border-gray-200 text-right font-bold text-[#125f58]">${{ d.total_pedido|floatformat:0 }}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase border border-gray-200">
+                                    {{ d.pedido.estado.estado_pedido }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="p-12 text-center text-gray-400 italic">No hay datos que coincidan con los filtros seleccionados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

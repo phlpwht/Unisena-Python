@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Ventas - {{ local.Nombre_local }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print { .no-print { display: none; } body { padding: 0; margin: 0; } }
+    </style>
+</head>
+<body class="bg-white p-10">
+    <div class="max-w-4xl mx-auto border p-10 rounded-xl shadow-sm">
+        <div class="flex justify-between items-start border-b-2 border-gray-100 pb-8 mb-8">
+            <div>
+                <h1 class="text-3xl font-black text-gray-800 uppercase tracking-tighter">{{ local.Nombre_local }}</h1>
+                <p class="text-gray-500 font-bold text-xs uppercase tracking-widest mt-1">Reporte Detallado de Ventas</p>
+                <div class="mt-4 text-[10px] text-gray-400 uppercase font-black">
+                    {% if filtros.inicio %}Desde: {{ filtros.inicio }}{% endif %}
+                    {% if filtros.fin %} Hasta: {{ filtros.fin }}{% endif %}
+                    {% if filtros.estado %} | Estado: {{ filtros.estado }}{% endif %}
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-sm font-bold text-gray-800">Fecha de Generación</p>
+                <p class="text-xs text-gray-500">{% now "d/m/Y H:i" %}</p>
+                <button onclick="window.print()" class="no-print mt-4 bg-gray-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Imprimir / Guardar PDF</button>
+            </div>
+        </div>
+
+        <table class="w-full text-left mb-10">
+            <thead>
+                <tr class="border-b-2 border-gray-800">
+                    <th class="py-3 text-[10px] font-black uppercase">Orden #</th>
+                    <th class="py-3 text-[10px] font-black uppercase">Fecha</th>
+                    <th class="py-3 text-[10px] font-black uppercase">Cliente</th>
+                    <th class="py-3 text-[10px] font-black uppercase">Estado</th>
+                    <th class="py-3 text-[10px] font-black uppercase text-right">Valor Venta</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y">
+                {% for pedido in pedidos %}
+                <tr>
+                    <td class="py-4 text-xs font-bold text-gray-800">#{{ pedido.idPedido|stringformat:"04d" }}</td>
+                    <td class="py-4 text-xs text-gray-500">{{ pedido.fecha_pedido|date:"d/m/Y" }}</td>
+                    <td class="py-4 text-xs text-gray-700 font-medium">{{ pedido.usuario.nombres }} {{ pedido.usuario.apellidos }}</td>
+                    <td class="py-4">
+                        <span class="text-[9px] font-black uppercase">{{ pedido.estado.estado_pedido }}</span>
+                    </td>
+                    <td class="py-4 text-xs font-black text-right tracking-tighter">${{ pedido.valor_venta|floatformat:0 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="py-10 text-center text-gray-400 italic">No se encontraron registros para los filtros seleccionados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="flex justify-end border-t-2 border-gray-800 pt-6">
+            <div class="text-right">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Ventas Consolidadas</p>
+                <p class="text-4xl font-black text-gray-800 tracking-tighter">${{ total_general|floatformat:0 }}</p>
+                <p class="text-[8px] text-gray-400 mt-2">* Solo incluye pedidos en estado COMPLETADO dentro del rango seleccionado.</p>
+            </div>
+        </div>
+
+        <div class="mt-20 pt-10 border-t border-dashed border-gray-200 text-center">
+            <p class="text-[9px] text-gray-400 uppercase font-black tracking-[0.3em]">UniSena - Gestión de Uniformes © 2026</p>
+        </div>
+    </div>
+
+    <script>
+        // Opcional: abrir el diálogo de impresión automáticamente al cargar
+        window.onload = () => {
+            // setTimeout(() => window.print(), 500);
+        };
+    </script>
+</body>
+</html>

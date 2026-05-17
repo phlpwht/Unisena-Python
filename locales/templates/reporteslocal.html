@@ -1,0 +1,110 @@
+<div class="animate-fade-in">
+    <!-- CABECERA DE REPORTES -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div>
+            <h2 class="text-3xl font-black text-[#125f58] uppercase tracking-tighter">Panel de Reportes</h2>
+            <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Análisis de rendimiento y exportación de datos</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'previa_excel_local' local.IdLocal %}?p_fecha_inicio={{ p_fecha_inicio }}&p_fecha_fin={{ p_fecha_fin }}&p_estado={{ p_estado_sel }}&p_min_val={{ p_min_val }}&p_max_val={{ p_max_val }}" target="_blank"
+               class="bg-green-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition shadow-lg flex items-center gap-2">
+                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+            </a>
+            <a href="{% url 'ver_reporte_pdf' local.IdLocal %}?p_fecha_inicio={{ p_fecha_inicio }}&p_fecha_fin={{ p_fecha_fin }}&p_estado={{ p_estado_sel }}" target="_blank"
+               class="bg-gray-800 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition shadow-lg flex items-center gap-2">
+                <i class="bi bi-file-earmark-pdf"></i> Generar PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- FILTROS DE REPORTE -->
+    <form method="GET" class="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 mb-10 no-print">
+        <input type="hidden" name="reportes" value="1">
+        <div>
+            <label class="text-[9px] font-black text-gray-400 uppercase mb-2 block">Desde</label>
+            <input type="date" name="p_fecha_inicio" value="{{ p_fecha_inicio }}" class="w-full bg-white border-0 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#125f58]">
+        </div>
+        <div>
+            <label class="text-[9px] font-black text-gray-400 uppercase mb-2 block">Hasta</label>
+            <input type="date" name="p_fecha_fin" value="{{ p_fecha_fin }}" class="w-full bg-white border-0 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#125f58]">
+        </div>
+        <div>
+            <label class="text-[9px] font-black text-gray-400 uppercase mb-2 block">Estado de Pedidos</label>
+            <select name="p_estado" class="w-full bg-white border-0 rounded-xl p-3 text-xs focus:ring-2 focus:ring-[#125f58]">
+                <option value="">Todos</option>
+                {% for code, label in estados_pedido %}
+                <option value="{{ code }}" {% if p_estado_sel == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-end gap-2">
+            <button type="submit" class="flex-1 bg-[#125f58] text-white p-2 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-[#0d4742] transition">
+                Actualizar Reporte
+            </button>
+            <a href="?reportes=1" class="p-3 bg-gray-200 text-gray-500 rounded-xl hover:bg-gray-300 transition">
+                Limpiar
+            </a>
+        </div>
+    </form>
+
+    <!-- CARDS ESTADÍSTICAS -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl flex items-center gap-6">
+            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center text-3xl">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Todos los pedidos recibidos</p>
+                <p class="text-3xl font-black text-gray-800 tracking-tighter leading-none">{{ pedidos_count }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl flex items-center gap-6">
+            <div class="w-16 h-16 bg-orange-50 text-orange-600 rounded-3xl flex items-center justify-center text-3xl">
+                <i class="bi bi-star"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Producto Estrella</p>
+                <p class="text-xl font-black text-gray-800 tracking-tighter leading-none truncate w-40">
+                    {% if reporte_productos %}{{ reporte_productos.0.prenda__nombre }}{% else %}Sin ventas{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN DE GRÁFICOS Y TOP -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- TOP PRODUCTOS -->
+        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl">
+            <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest mb-6 border-b pb-4">🏆 Top 5 Productos más vendidos</h3>
+            <div class="space-y-6">
+                {% for prod in reporte_productos %}
+                <div>
+                    <div class="flex justify-between text-xs mb-2">
+                        <span class="font-bold text-gray-700">{{ prod.prenda__nombre }}</span>
+                        <span class="font-black text-[#125f58]">{{ prod.cantidad_total }} und. (${{ prod.dinero_total|floatformat:0 }})</span>
+                    </div>
+                    <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                        <div class="bg-[#125f58] h-full rounded-full" style="width: {% widthratio prod.cantidad_total reporte_productos.0.cantidad_total 100 %}%"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-center text-gray-400 text-xs py-10">No hay datos de ventas completadas para mostrar.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ESTADOS DE PEDIDO -->
+        <div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl">
+            <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest mb-6 border-b pb-4">📊 Distribución de Estados</h3>
+            <div class="grid grid-cols-2 gap-4">
+                {% for est in reporte_estados %}
+                <div class="bg-gray-50 p-4 rounded-2xl text-center border border-gray-100">
+                    <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{{ est.estado__estado_pedido }}</p>
+                    <p class="text-2xl font-black text-gray-800">{{ est.total }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>

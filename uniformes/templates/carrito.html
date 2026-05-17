@@ -36,12 +36,14 @@
             <div>
                 <h1 class="text-5xl font-black text-white tracking-tighter uppercase drop-shadow-xl">Mi Pedido</h1>
                 <p class="text-white/80 text-sm font-bold mt-2 uppercase tracking-widest flex items-center gap-2">
-                    <i class="bi bi-bag-check-fill"></i> Tienes {{ cart_count }} uniformes seleccionados
+                    <i class="bi bi-bag-check-fill"></i> Tienes <span id="header-selected-count">0</span> uniformes seleccionados
                 </p>
             </div>
             <a href="{% url 'catalogo_prendas' %}" class="bg-white/20 backdrop-blur-md px-8 py-3 rounded-2xl border border-white/30 text-[10px] font-black text-white hover:bg-white hover:text-[#125f58] transition shadow-2xl uppercase tracking-[0.2em] active:scale-95">← Seguir Explorando</a>
         </div>
 
+        <form action="{% url 'procesar_pago' %}" method="POST">
+            {% csrf_token %}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- LISTA DE PRODUCTOS -->
             <div class="lg:col-span-2 space-y-6">
@@ -49,7 +51,8 @@
                 <div class="item-card bg-white/80 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-xl border border-white/30 flex flex-col sm:flex-row items-center gap-10 hover:shadow-2xl transition-all duration-500 group">
                     <!-- Selección -->
                     <div class="flex items-center">
-                        <input type="checkbox" class="item-checkbox w-6 h-6 rounded-full border-gray-300 text-[#125f58] focus:ring-[#125f58] transition-all cursor-pointer"
+                        <input type="checkbox" name="seleccionados" value="{{ item.obj.idPrenda }}"
+                               class="item-checkbox w-6 h-6 rounded-full border-gray-300 text-[#125f58] focus:ring-[#125f58] transition-all cursor-pointer"
                                data-subtotal="{{ item.subtotal }}"
                                data-cantidad="{{ item.cantidad }}">
                     </div>
@@ -60,7 +63,7 @@
                         {% else %}
                             <div class="flex items-center justify-center h-full"><i class="bi bi-image text-gray-200 text-4xl"></i></div>
                         {% endif %}
-                        <div class="absolute bottom-0 right-0 bg-[#125f58] text-white text-[8px] px-2 py-1 font-black rounded-tl-xl shadow-lg">x{{ item.cantidad }}</div>
+                        <div id="badge-{{ item.obj.idPrenda }}" class="absolute bottom-0 right-0 bg-[#125f58] text-white text-[8px] px-2 py-1 font-black rounded-tl-xl shadow-lg">x{{ item.cantidad }}</div>
                     </div>
                     
                     <div class="flex-grow">
@@ -80,8 +83,16 @@
                             </div>
                             <div class="w-px h-6 bg-gray-100"></div>
                             <div class="flex flex-col">
-                                <span class="text-[8px] text-gray-400 font-black uppercase tracking-tighter">Unidades</span>
-                                <span class="text-xs font-black text-gray-600">{{ item.cantidad }}</span>
+                                <span class="text-[8px] text-gray-400 font-black uppercase tracking-tighter mb-1">Unidades</span>
+                                <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1 w-fit">
+                                    <button type="button" onclick="changeQty('{{ item.obj.idPrenda }}', -1, {{ item.obj.stock|default:0 }})" class="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm hover:bg-gray-200 transition text-xs">-</button>
+                                    <input type="number" id="qty-{{ item.obj.idPrenda }}" value="{{ item.cantidad }}" 
+                                           data-precio="{{ item.obj.precio|stringformat:'.2f' }}"
+                                           class="w-8 bg-transparent text-center font-black text-[#125f58] text-xs outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                           onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"
+                                           onchange="updateQtyManually('{{ item.obj.idPrenda }}', {{ item.obj.stock|default:0 }})">
+                                    <button type="button" onclick="changeQty('{{ item.obj.idPrenda }}', 1, {{ item.obj.stock|default:0 }})" class="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm hover:bg-gray-200 transition text-xs">+</button>
+                                </div>
                             </div>
                             <div class="w-px h-6 bg-gray-100"></div>
                             <div class="flex flex-col">
@@ -93,7 +104,7 @@
                     
                     <div class="text-right">
                         <span class="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">Subtotal</span>
-                        <p class="text-3xl font-black text-[#125f58] tracking-tighter drop-shadow-sm">${{ item.subtotal|floatformat:0 }}</p>
+                        <p id="subtotal-{{ item.obj.idPrenda }}" class="text-3xl font-black text-[#125f58] tracking-tighter drop-shadow-sm">COP ${{ item.subtotal|floatformat:0 }}</p>
                         <a href="{% url 'eliminar_del_carrito' item.obj.idPrenda %}" class="inline-block mt-4 text-[9px] text-red-500 font-black hover:text-red-700 uppercase tracking-widest border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-50 transition">
                             <i class="bi bi-trash3"></i> Quitar
                         </a>
@@ -133,18 +144,17 @@
                             </div>
                         </div>
 
-                        <form action="{% url 'procesar_pago' %}" method="POST">
-                            {% csrf_token %}
                             <!-- 💰 Bloque de Abono Obligatorio -->
                             <div class="flex flex-col gap-2 mt-6">
                                 <label class="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1">¿Cuánto deseas abonar?</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xl">$</span>
-                                    <input type="number" name="abono_pago" id="abono_pago" required min="1" 
+                                    <input type="number" name="abono_pago" id="abono_pago" required min="1"
+                                           onkeydown="if(event.key==='Enter'){event.preventDefault();}"
                                            placeholder="Ej: 20000"
                                            class="w-full p-6 pl-10 bg-gray-50 border border-gray-100 rounded-2xl text-xl font-black text-[#125f58] focus:ring-2 focus:ring-[#125f58] outline-none shadow-inner">
                                 </div>
-                                <p class="text-[9px] text-red-500 italic font-bold uppercase tracking-tighter mt-1">⚠️ El abono es obligatorio para continuar</p>
+                                <p class="text-[9px] text-red-500 italic font-bold uppercase tracking-tighter mt-1">⚠️ El abono mínimo es del 20% (Mín: <span id="min-abono-display">$0</span>)</p>
                             </div>
 
                             <div class="border-t-2 border-dashed border-gray-100 pt-8 my-12">
@@ -161,7 +171,6 @@
                                 <span>Proceder al pago</span>
                                 <i class="bi bi-arrow-right-circle-fill text-xl group-hover:translate-x-1 transition-transform"></i>
                             </button>
-                        </form>
                     </div>
                     
                     <div class="mt-8 flex items-center justify-center gap-3 opacity-30 grayscale">
@@ -171,15 +180,19 @@
                 </div>
             </div>
         </div>
+        </form>
     </div>
 
     <script>
         // Lógica de cálculo dinámico para los checkboxes
         const checkboxes = document.querySelectorAll('.item-checkbox');
         const displaySelectedCount = document.getElementById('display-selected-count');
+        const headerSelectedCount = document.getElementById('header-selected-count');
         const subtotalDisplay = document.getElementById('subtotal-seleccionado');
+        const minAbonoDisplay = document.getElementById('min-abono-display');
         const finalTotal = document.getElementById('final-total');
         const abonoInput = document.getElementById('abono_pago');
+        const formatter = new Intl.NumberFormat('es-CO');
 
         function calculateTotal() {
             let subtotal = 0;
@@ -191,6 +204,9 @@
                 }
             });
 
+            const minAbonoRequerido = subtotal * 0.20;
+            minAbonoDisplay.innerText = '$' + formatter.format(Math.ceil(minAbonoRequerido));
+
             // Obtener abono y validar que no supere el subtotal
             let abono = parseFloat(abonoInput.value) || 0;
             if (abono > subtotal) {
@@ -201,15 +217,74 @@
             const totalConDescuento = Math.max(0, subtotal - abono);
             
             displaySelectedCount.innerText = totalUnidades;
-            subtotalDisplay.innerText = '$' + new Intl.NumberFormat().format(subtotal);
-            finalTotal.innerText = '$' + new Intl.NumberFormat().format(totalConDescuento);
+            if (headerSelectedCount) headerSelectedCount.innerText = totalUnidades;
+            subtotalDisplay.innerText = 'COP $' + formatter.format(subtotal);
+            finalTotal.innerText = 'COP $' + formatter.format(totalConDescuento);
             
             // Actualizar el máximo permitido en el input de abono
             abonoInput.max = subtotal;
+            abonoInput.min = minAbonoRequerido;
         }
 
         checkboxes.forEach(cb => cb.addEventListener('change', calculateTotal));
         abonoInput.addEventListener('input', calculateTotal);
+
+        window.changeQty = async function(id, delta, stock) {
+            const input = document.getElementById(`qty-${id}`);
+            const precio = parseFloat(input.dataset.precio.replace(',', '.'));
+            let target = parseInt(input.value) + delta;
+            if (target < 1 || target > stock) return;
+            await syncQty(id, target, precio);
+        }
+
+        window.updateQtyManually = async function(id, stock) {
+            const input = document.getElementById(`qty-${id}`);
+            const precio = parseFloat(input.dataset.precio.replace(',', '.'));
+            let target = parseInt(input.value) || 1;
+            if (target > stock) target = stock;
+            if (target < 1) target = 1;
+            await syncQty(id, target, precio);
+        }
+
+        window.syncQty = async function(id, target, precio) {
+            const input = document.getElementById(`qty-${id}`);
+            const badge = document.getElementById(`badge-${id}`);
+            const subtotalText = document.getElementById(`subtotal-${id}`);
+            const checkbox = document.querySelector(`.item-checkbox[value="${id}"]`);
+
+            input.value = target;
+            if (badge) badge.innerText = 'x' + target;
+            
+            const newSub = target * precio;
+            subtotalText.innerText = 'COP $' + formatter.format(newSub);
+            
+            checkbox.dataset.cantidad = target;
+            checkbox.dataset.subtotal = newSub;
+            calculateTotal();
+
+            try {
+                const url = "{% url 'actualizar_cantidad_carrito' 0 %}".replace('0', id);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ cantidad: target })
+                });
+                const result = await response.json();
+                // Si el servidor corrigió la cantidad (ej. por stock), actualizamos el UI
+                if (result.status === 'success' && result.cantidad !== target) {
+                    input.value = result.cantidad;
+                    if (badge) badge.innerText = 'x' + result.cantidad;
+                    const correctedSub = result.cantidad * precio;
+                    subtotalText.innerText = 'COP $' + formatter.format(correctedSub);
+                    checkbox.dataset.cantidad = result.cantidad;
+                    checkbox.dataset.subtotal = correctedSub;
+                    calculateTotal();
+                }
+            } catch (e) { console.error("Error al sincronizar cantidad", e); }
+        }
 
         // Inicializar el total en $0 al cargar (ya que nada está seleccionado)
         calculateTotal();

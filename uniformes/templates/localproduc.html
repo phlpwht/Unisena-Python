@@ -70,6 +70,13 @@
         <div class="mb-10 flex flex-wrap gap-4 items-center justify-between">
             <h2 class="text-xl font-black text-[#125f58] uppercase tracking-tighter">Catálogo del Local</h2>
             <form method="GET" class="flex gap-2">
+                <select name="material" class="p-2.5 bg-white border border-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-[#125f58] outline-none">
+                    <option value="all">Todos los materiales</option>
+                    {% for val, label in prenda_material_choices %}
+                        <option value="{{ val }}" {% if material_sel == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+
                 <input type="text" name="search_prenda" value="{{ search_prenda }}" placeholder="Buscar en este local..." 
                     class="p-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#125f58] outline-none w-64">
                 <button type="submit" class="bg-[#125f58] text-white px-4 py-2 rounded-xl font-bold text-xs uppercase hover:bg-[#0d4742] transition">
@@ -97,7 +104,7 @@
                     
                     <div class="mt-auto">
                         <div class="flex justify-between items-end mb-3">
-                            <span class="text-[#125f58] font-black text-sm leading-none">${{ p.precio|floatformat:0 }}</span>
+                            <span class="text-[#125f58] font-black text-sm leading-none">COP ${{ p.precio|floatformat:0 }}</span>
                             <span class="text-[8px] font-black {% if p.stock <= 5 %}text-red-600 animate-pulse font-bold{% else %}text-gray-400{% endif %} uppercase">Stock: {{ p.stock }}</span>
                         </div>
                         

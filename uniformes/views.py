@@ -1,4 +1,4 @@
-import os
+import os, json
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from .models import Prendas, Pedido, DetallePedido, EstadoPedido
@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.db import models, transaction
 import pandas as pd
 import io
+from django.http import JsonResponse
 from django.urls import reverse
 from django.core.files import File
 from django.db.models import OuterRef, Subquery
@@ -40,7 +41,7 @@ def crear_prenda(request, id_local):
         try:
             precio_decimal = Decimal(precio)
             if precio_decimal <= 0:
-                errores.append("❌ El precio debe ser mayor a 0 💰")
+                errores.append("❌ El precio debe ser mayor a 0 COP 💰")
         except:
             errores.append("❌ Precio inválido")
 
@@ -62,6 +63,9 @@ def crear_prenda(request, id_local):
                 "prendas": prendas,
                 "prenda": request.POST, # 👈 Devolvemos lo que el usuario escribió
                 "mostrar_formulario": True,
+                "prenda_talla_choices": Prendas.TALLA_CHOICES,
+                "prenda_material_choices": Prendas.MATERIAL_CHOICES,
+                "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
             })
 
         # Crear la prenda si todo es válido
@@ -95,6 +99,9 @@ def crear_prenda(request, id_local):
                 "prendas": prendas,
                 "prenda": request.POST,
                 "mostrar_formulario": True,
+                "prenda_talla_choices": Prendas.TALLA_CHOICES,
+                "prenda_material_choices": Prendas.MATERIAL_CHOICES,
+                "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
             })
 
     return render(request, "detallelocal.html", {"local": local})
@@ -123,7 +130,7 @@ def editar_prenda(request, id_prenda):
         try:
             precio_decimal = Decimal(precio)
             if precio_decimal <= 0:
-                errores.append("❌ El precio debe ser mayor a 0 💰")
+                errores.append("❌ El precio debe ser mayor a 0 COP 💰")
         except:
             errores.append("❌ Precio inválido")
 
@@ -158,6 +165,9 @@ def editar_prenda(request, id_prenda):
                 "prendas": prendas,
                 "prenda": prenda,
                 "mostrar_formulario": True,
+                "prenda_talla_choices": Prendas.TALLA_CHOICES,
+                "prenda_material_choices": Prendas.MATERIAL_CHOICES,
+                "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
             })
 
         # Guardar cambios
@@ -170,6 +180,10 @@ def editar_prenda(request, id_prenda):
         prenda.tipoPrenda = tipo_prenda
         if imagen:
             prenda.imagen = imagen
+        
+        # Si se añade stock a un producto agotado, se reactiva automáticamente
+        if prenda.stock > 0:
+            prenda.activo = True
 
         try:
             prenda.save()
@@ -183,6 +197,9 @@ def editar_prenda(request, id_prenda):
                 "prendas": prendas,
                 "prenda": prenda,
                 "mostrar_formulario": True,
+                "prenda_talla_choices": Prendas.TALLA_CHOICES,
+                "prenda_material_choices": Prendas.MATERIAL_CHOICES,
+                "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
             })
 
     # Si se accede por GET, redirige a la página con formulario en modo edición
@@ -199,13 +216,33 @@ def eliminar_prenda(request, id_prenda):
     try:
         if request.method == "POST":
             cantidad_eliminar = int(request.POST.get('cantidad_eliminar', 0))
-            if cantidad_eliminar >= prenda.stock:
-                # Si se elimina todo el stock o más, se borra el registro
-                prenda.delete()
+
+            # 🚨 VALIDACIÓN: Verificar unidades comprometidas en pedidos activos
+            unidades_reservadas = DetallePedido.objects.filter(
+                prenda=prenda,
+                pedido__estado__estado_pedido__in=['PENDIENTE', 'En Proceso']
+            ).aggregate(total=models.Sum('cantidad'))['total'] or 0
+
+            if cantidad_eliminar == 0 or cantidad_eliminar >= prenda.stock:
+                # Eliminación lógica: ponemos stock en 0 y desactivamos
+                if unidades_reservadas > 0:
+                    messages.error(request, f"❌ No se puede eliminar el producto: hay {unidades_reservadas} unidades reservadas en pedidos pendientes.")
+                    return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
+                
+                prenda.stock = 0
+                prenda.activo = False
+                prenda.save()
                 messages.success(request, "✅ Producto eliminado del inventario por falta de stock.")
             elif cantidad_eliminar > 0:
                 # Eliminación parcial (ajuste de stock)
+                if (prenda.stock - cantidad_eliminar) < unidades_reservadas:
+                    messages.error(request, f"⚠️ No puedes retirar {cantidad_eliminar} unidades. Debes dejar al menos {unidades_reservadas} para cubrir pedidos pendientes.")
+                    return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
+
                 prenda.stock -= cantidad_eliminar
+                if prenda.stock <= 0:
+                    prenda.stock = 0
+                    prenda.activo = False
                 prenda.save()
 
                 # Registrar el movimiento de salida en el inventario
@@ -217,8 +254,10 @@ def eliminar_prenda(request, id_prenda):
 
                 messages.success(request, f"✅ Se eliminaron {cantidad_eliminar} unidades del stock.")
             else:
-                # Si no se envía cantidad, se asume eliminación total
-                prenda.delete()
+                # Eliminación lógica por defecto
+                prenda.stock = 0
+                prenda.activo = False
+                prenda.save()
                 messages.success(request, "✅ Prenda eliminada correctamente")
         else:
             return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
@@ -266,7 +305,10 @@ def bulk_upload_prendas(request, id_local):
                     precio = Decimal(str(row['precio']).replace(',', '.').strip()) # Manejar comas como separador decimal
                     stock = int(str(row['stock']).strip())
                     talla = str(row['talla']).replace(' ', '').strip().upper()
-                    material = str(row['material']).strip()
+                    
+                    # Mapeo para material
+                    mat_raw = str(row['material']).strip().lower()
+                    material = 'Algodon' if 'algodon' in mat_raw or 'algodón' in mat_raw else 'Malla' if 'malla' in mat_raw else mat_raw.capitalize()
                     
                     # Mapeo inteligente para tipo de prenda
                     tipo_raw = str(row['tipoPrenda']).strip().lower()
@@ -287,6 +329,9 @@ def bulk_upload_prendas(request, id_local):
                     if talla not in [choice[0] for choice in Prendas.TALLA_CHOICES]: # Asumiendo que tienes TALLA_CHOICES en tu modelo
                         tallas_validas = ", ".join([choice[0] for choice in Prendas.TALLA_CHOICES])
                         raise ValueError(f"Talla '{talla}' no válida. Opciones: {tallas_validas}.")
+                    if material not in [choice[0] for choice in Prendas.MATERIAL_CHOICES]:
+                        mats_validos = " o ".join([choice[0] for choice in Prendas.MATERIAL_CHOICES])
+                        raise ValueError(f"Material '{material}' no válido. Los únicos materiales permitidos son: {mats_validos}.")
                     if tipo_prenda not in [choice[0] for choice in Prendas.TIPO_PRENDA_CHOICES]: # Asumiendo que tienes TIPO_PRENDA_CHOICES
                         tipos_validos = ", ".join([choice[0] for choice in Prendas.TIPO_PRENDA_CHOICES])
                         raise ValueError(f"Tipo de prenda '{tipo_prenda}' no válido. Opciones: {tipos_validos}.")
@@ -360,8 +405,21 @@ def eliminar_prendas_masivo(request, id_local):
             messages.warning(request, "⚠️ No seleccionaste ninguna prenda.")
         else:
             try:
-                Prendas.objects.filter(idPrenda__in=ids, idLocal=local).delete()
-                messages.success(request, f"✅ Se eliminaron {len(ids)} prendas correctamente.")
+                # Filtrar qué IDs de los seleccionados tienen pedidos pendientes
+                ids_con_pedidos = DetallePedido.objects.filter(
+                    prenda_id__in=ids,
+                    pedido__estado__estado_pedido__in=['PENDIENTE', 'En Proceso']
+                ).values_list('prenda_id', flat=True).distinct()
+
+                # Solo permitimos eliminar los que NO estén en esa lista
+                ids_a_eliminar = [int(i) for i in ids if int(i) not in ids_con_pedidos]
+                
+                cant_eliminadas = Prendas.objects.filter(idPrenda__in=ids_a_eliminar, idLocal=local).update(activo=False, stock=0)
+                
+                if len(ids_con_pedidos) > 0:
+                    messages.warning(request, f"⚠️ Se eliminaron {cant_eliminadas} prendas, pero {len(ids_con_pedidos)} no se pudieron borrar por tener pedidos pendientes.")
+                else:
+                    messages.success(request, f"✅ Se eliminaron {cant_eliminadas} prendas correctamente.")
             except Exception as e:
                 messages.error(request, f"❌ Error al eliminar prendas: {e}")
 
@@ -373,7 +431,7 @@ def catalogo_prendas(request):
     usuario_id = request.session.get("usuario_id")
 
     # Solo prendas de locales activos
-    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True).select_related('idLocal', 'idLocal__IdUsuario')
+    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
 
     # Alerta persistente
     pedidos_pendientes_count = Pedido.objects.filter(
@@ -404,8 +462,8 @@ def catalogo_prendas(request):
         prendas_qs = prendas_qs.filter(tipoPrenda=tipo)
 
     material = request.GET.get('material', '').strip()
-    if material:
-        prendas_qs = prendas_qs.filter(material__icontains=material)
+    if material and material != 'all':
+        prendas_qs = prendas_qs.filter(material=material)
 
     sort = request.GET.get('sort', '').strip()
     if sort == 'price_asc':
@@ -452,14 +510,15 @@ def catalogo_prendas(request):
         "min_price": min_price,
         "max_price": max_price,
         "prenda_talla_choices": Prendas.TALLA_CHOICES,
+        "prenda_material_choices": Prendas.MATERIAL_CHOICES,
         "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
         "cart_count": cart_count,
         "pedidos_pendientes_count": pedidos_pendientes_count,
     })
 
 def detalle_prenda(request, id_prenda):
-    prenda = get_object_or_404(Prendas, pk=id_prenda)
-    recomendados = Prendas.objects.filter(idLocal__EstaActivo=True).exclude(pk=id_prenda).order_by('?')[:15]
+    prenda = get_object_or_404(Prendas, pk=id_prenda, activo=True)
+    recomendados = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).exclude(pk=id_prenda).order_by('?')[:15]
 
     # Conteo seguro para Clientes y Anónimos
     cart_count = 0
@@ -512,6 +571,29 @@ def eliminar_del_carrito(request, id_prenda):
         messages.success(request, "Prenda eliminada del carrito correctamente 🗑️")
     return redirect('ver_carrito')
 
+def actualizar_cantidad_carrito(request, id_prenda):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            nueva_cantidad = int(data.get('cantidad', 1))
+            carrito = request.session.get('carrito', {})
+            id_str = str(id_prenda)
+
+            if id_str in carrito:
+                prenda = get_object_or_404(Prendas, pk=id_prenda)
+                # Validamos que no exceda el stock
+                if nueva_cantidad > prenda.stock: nueva_cantidad = prenda.stock
+                if nueva_cantidad < 1: nueva_cantidad = 1
+
+                carrito[id_str] = nueva_cantidad
+                request.session['carrito'] = carrito
+                request.session.modified = True
+                
+                return JsonResponse({'status': 'success', 'cantidad': nueva_cantidad})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error'}, status=405)
+
 def ver_carrito(request):
     # Solo bloqueamos a los Vendedores
     if request.session.get("usuario_rol") == "Vendedor":
@@ -563,10 +645,12 @@ def procesar_pago(request):
             messages.error(request, "El carrito está vacío 🛒")
             return redirect('catalogo_prendas')
 
-        # 1. Obtener seleccionados del formulario. Si no hay nada, procesamos TODO el carrito por defecto.
+    
+        # 1. Obtener seleccionados del formulario.
         selected_ids = request.POST.getlist('seleccionados')
         if not selected_ids:
-            selected_ids = list(carrito.keys())
+            messages.warning(request, "⚠️ Por favor, selecciona al menos un producto para pagar.")
+            return redirect('ver_carrito')
 
 
         # Corrección Abono: Convertir a int/decimal elimina ceros a la izquierda automáticamente
@@ -575,10 +659,6 @@ def procesar_pago(request):
         except:
             abono_total = Decimal(0)
         
-        if abono_total <= 0:
-            messages.error(request, "El abono debe ser mayor a $0")
-            return redirect('ver_carrito')
-
         # Calcular total real del pedido
         total_p = Decimal(0)
         prendas_list = []
@@ -591,64 +671,13 @@ def procesar_pago(request):
             prenda = get_object_or_404(Prendas, pk=p_id)
             
             # REGLA DE NEGOCIO: Validar Stock real en el momento del pago
-            if prenda.stock < cant:
+            if not prenda.activo or prenda.stock < cant:
                 messages.error(request, f"Lo sentimos, solo quedan {prenda.stock} unidades de {prenda.nombre} 😔")
                 return redirect('ver_carrito')
 
             subtotal = prenda.precio * cant
             total_p += subtotal
             prendas_list.append((prenda, cant, subtotal))
-
-        # 2. Obtener o crear el estado inicial
-        estado_inicial, _ = EstadoPedido.objects.get_or_create(estado_pedido='PENDIENTE')
-
-        # Calcular el número correlativo para este cliente específico
-        conteo_usuario = Pedido.objects.filter(usuario_id=usuario_id).count()
-        nuevo_num_cliente = conteo_usuario + 1
-
-        # 3. Crear el Pedido (sin campos de total que ahora están en el detalle)
-        nuevo_pedido = Pedido.objects.create(
-            usuario_id=usuario_id,
-            estado=estado_inicial,
-            num_pedido_cliente=nuevo_num_cliente
-        )
-
-        for prenda, cant, subtotal in prendas_list:
-            # Calculamos un abono proporcional para cada línea de detalle
-            abono_linea = (subtotal / total_p * abono_total) if total_p > 0 else Decimal(0)
-            
-            detalle = DetallePedido.objects.create(
-                pedido=nuevo_pedido,
-                prenda=prenda,
-                cantidad=cant,
-                talla=prenda.talla,
-                total_pedido=subtotal,
-                total_abono=abono_linea
-            )
-
-            # 4. Descontar Stock y registrar movimiento
-            prenda.stock -= cant
-            prenda.save()
-            
-            MovimientoInventario.objects.create(
-                idPrenda=prenda,
-                idDetalle=detalle,
-                tipoMovimiento='SALIDA',
-                cantidad=cant
-            )
-
-        # 3. Limpiar del carrito SOLO los productos comprados
-        for p_id in selected_ids:
-            if p_id in carrito:
-                del carrito[p_id]
-        
-        request.session.modified = True
-        messages.success(request, "Pedido generado con éxito ✅")
-        return redirect('ver_pedido', id_pedido=nuevo_pedido.idPedido)
-    
-    # Si se intenta acceder por GET, redirigir al carrito
-    return redirect('ver_carrito')
-
 def ver_pedido(request, id_pedido):
     usuario_id = request.session.get("usuario_id")
     pedido = get_object_or_404(Pedido, idPedido=id_pedido, usuario_id=usuario_id)
@@ -833,7 +862,7 @@ def explorar_locales(request):
 def ver_productos_local(request, id_local):
     local = get_object_or_404(Local, IdLocal=id_local, EstaActivo=True)
     
-    prendas_qs = Prendas.objects.filter(idLocal=local).select_related('idLocal', 'idLocal__IdUsuario')
+    prendas_qs = Prendas.objects.filter(idLocal=local, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
 
     # --- FILTROS ---
     search_prenda = request.GET.get('search_prenda', '').strip()
@@ -849,8 +878,8 @@ def ver_productos_local(request, id_local):
         prendas_qs = prendas_qs.filter(tipoPrenda=tipo)
 
     material = request.GET.get('material', '').strip()
-    if material:
-        prendas_qs = prendas_qs.filter(material__icontains=material)
+    if material and material != 'all':
+        prendas_qs = prendas_qs.filter(material=material)
 
     sort = request.GET.get('sort', '').strip()
     if sort == 'price_asc':
@@ -885,6 +914,7 @@ def ver_productos_local(request, id_local):
         "material_sel": material,
         "sort_sel": sort,
         "prenda_talla_choices": Prendas.TALLA_CHOICES,
+        "prenda_material_choices": Prendas.MATERIAL_CHOICES,
         "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
         "cart_count": cart_count,
     })

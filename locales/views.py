@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import Local
 from usuario.models import Usuario  #ajusta el import según tu app
 from django.contrib import messages
+from django.http import HttpResponse
 from django.contrib.auth.hashers import check_password
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
@@ -11,6 +12,7 @@ from django.db import models
 from django.utils.timezone import now
 from inventario.models import MovimientoInventario
 from allauth.socialaccount.models import SocialAccount
+import pandas as pd
 
 def lista_locales(request):
     if "usuario_id" not in request.session:
@@ -96,9 +98,8 @@ def eliminar_local(request, id):
     usuario_id = request.session.get("usuario_id")
     usuario = get_object_or_404(Usuario, id=usuario_id)
     local = get_object_or_404(Local, IdLocal=id, IdUsuario_id=usuario_id)
-
     # 🚨 VALIDACIÓN: No permitir eliminar si hay pedidos pendientes
-    if Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'PROCESO']).exists():
+    if Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'En Proceso']).exists():
         messages.error(request, "No se puede eliminar: el local tiene pedidos pendientes.")
         return redirect('lista_locales')
 
@@ -223,8 +224,8 @@ def detalle_local(request, id):
 
     # Filtro por material
     material_filter = request.GET.get('material', '').strip()
-    if material_filter:
-        prendas = prendas.filter(material__icontains=material_filter)
+    if material_filter and material_filter != 'all':
+        prendas = prendas.filter(material=material_filter)
 
     # Filtro por tipo de prenda
     tipo_prenda_filter = request.GET.get('tipoPrenda', '').strip()
@@ -247,7 +248,12 @@ def detalle_local(request, id):
 
     # 👇 SECCIÓN DE PEDIDOS (BÁSICO)
     mostrar_pedidos = request.GET.get('pedidos', '0') == '1'
-    pedidos_local = []
+    mostrar_reportes = request.GET.get('reportes', '0') == '1'
+    pedidos_local = Pedido.objects.none() # Inicializar como un QuerySet vacío
+    
+    # Variables de reporte
+    reporte_productos = []
+    reporte_estados = []
 
     # Capturamos parámetros de filtro para pedidos
     p_estado = request.GET.get('p_estado', '')
@@ -255,8 +261,10 @@ def detalle_local(request, id):
     p_fecha_inicio = request.GET.get('p_fecha_inicio', '')
     p_fecha_fin = request.GET.get('p_fecha_fin', '')
     p_id = request.GET.get('p_id', '')
+    p_min_val = request.GET.get('p_min_val', '').strip()
+    p_max_val = request.GET.get('p_max_val', '').strip()
 
-    if mostrar_pedidos:
+    if mostrar_pedidos or mostrar_reportes:
         pedidos_local = Pedido.objects.filter(
             detallepedido__prenda__idLocal=local
         ).distinct().select_related('estado', 'usuario')
@@ -274,6 +282,46 @@ def detalle_local(request, id):
             pedidos_local = pedidos_local.filter(fecha_pedido__date__lte=p_fecha_fin)
         if p_id:
             pedidos_local = pedidos_local.filter(idPedido=p_id)
+            
+        # Anotamos cada pedido con el valor total vendido por este local específico
+        pedidos_local = pedidos_local.annotate(
+            valor_venta=models.Sum('detallepedido__total_pedido', filter=models.Q(detallepedido__prenda__idLocal=local))
+        )
+
+        # Filtros por valor de la venta
+        if p_min_val:
+            pedidos_local = pedidos_local.filter(valor_venta__gte=p_min_val)
+        if p_max_val:
+            pedidos_local = pedidos_local.filter(valor_venta__lte=p_max_val)
+
+        # Cálculo de Total Ventas (Suma de lo que se filtró en pantalla, solo COMPLETADOS)
+        qs_totales = DetallePedido.objects.filter(prenda__idLocal=local, pedido__estado__estado_pedido='COMPLETADO')
+        if p_fecha_inicio:
+            qs_totales = qs_totales.filter(pedido__fecha_pedido__date__gte=p_fecha_inicio)
+        if p_fecha_fin:
+            qs_totales = qs_totales.filter(pedido__fecha_pedido__date__lte=p_fecha_fin)
+        
+        total_ventas_completadas = qs_totales.aggregate(total=models.Sum('total_pedido'))['total'] or 0
+        
+        if mostrar_reportes:
+            # Top 5 Productos más vendidos
+            reporte_productos = DetallePedido.objects.filter(
+                prenda__idLocal=local
+            )
+            if p_fecha_inicio: reporte_productos = reporte_productos.filter(pedido__fecha_pedido__date__gte=p_fecha_inicio)
+            if p_fecha_fin: reporte_productos = reporte_productos.filter(pedido__fecha_pedido__date__lte=p_fecha_fin)
+            
+            reporte_productos = reporte_productos.values('prenda__nombre').annotate(
+                cantidad_total=models.Sum('cantidad'),
+                dinero_total=models.Sum('total_pedido')
+            ).order_by('-cantidad_total')[:5]
+            
+            # Pedidos por estado
+            reporte_estados = Pedido.objects.filter(
+                detallepedido__prenda__idLocal=local
+            ).values('estado__estado_pedido').annotate(
+                total=models.Count('idPedido', distinct=True)
+            ).order_by('-total')
 
         pedidos_local = pedidos_local.order_by('-fecha_pedido')
 
@@ -335,12 +383,18 @@ def detalle_local(request, id):
         'tipo_prenda_filter': tipo_prenda_filter,
         'sort_by': sort_by,
         'prenda_talla_choices': Prendas.TALLA_CHOICES,
+        'prenda_material_choices': Prendas.MATERIAL_CHOICES,
         'prenda_tipo_choices': Prendas.TIPO_PRENDA_CHOICES,
         'prenda': prenda_editar,
         'mostrar_formulario': mostrar_formulario,
         'mostrar_pedidos': mostrar_pedidos,
+        'mostrar_reportes': mostrar_reportes,
         'mostrar_movimientos': mostrar_movimientos,
         'pedidos_local': pedidos_local,
+        'pedidos_count': pedidos_local.count(), # Contador para el reporte
+        'reporte_productos': reporte_productos,
+        'reporte_estados': reporte_estados,
+        'total_ventas_completadas': total_ventas_completadas if mostrar_pedidos else 0,
         'movimientos_local': movimientos_local,
         'resumen_movimientos': resumen_movimientos,
         'filtros_activos': filtros_activos,
@@ -350,6 +404,8 @@ def detalle_local(request, id):
         'p_fecha_inicio': p_fecha_inicio,
         'p_fecha_fin': p_fecha_fin,
         'p_id_search': p_id,
+        'p_min_val': p_min_val,
+        'p_max_val': p_max_val,
         **context_filtros
     })
 
@@ -365,7 +421,7 @@ def toggle_activo_local(request, id):
         nuevo_estado = not local.EstaActivo
 
         # 🚨 VALIDACIÓN: No permitir desactivar si hay pedidos pendientes o en proceso
-        if not nuevo_estado and Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'PROCESO']).exists():
+        if not nuevo_estado and Pedido.objects.filter(detallepedido__prenda__idLocal=local, estado__estado_pedido__in=['PENDIENTE', 'En Proceso']).exists():
             messages.error(request, "No se puede desactivar: hay pedidos pendientes.")
             return redirect('lista_locales')
 
@@ -466,8 +522,37 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
     if request.method == "POST":
         nuevo_estado_val = request.POST.get("nuevo_estado")
         if nuevo_estado_val:
-            # Normalizamos a mayúsculas para evitar duplicados inconsistentes en la DB
-            estado_obj, _ = EstadoPedido.objects.get_or_create(estado_pedido=nuevo_estado_val.strip().upper())
+            estado_anterior = pedido.estado.estado_pedido
+            nuevo_estado_nombre = nuevo_estado_val.strip()
+
+            # 🚨 Lógica de Inventario: Solo si cambia a COMPLETADO y no lo estaba antes
+            if nuevo_estado_nombre == 'COMPLETADO' and estado_anterior != 'COMPLETADO':
+                detalles_items = DetallePedido.objects.filter(pedido=pedido)
+                
+                # Validación de seguridad: re-verificar stock antes de procesar
+                for item in detalles_items:
+                    if item.prenda.stock < item.cantidad:
+                        messages.error(request, f"No hay suficiente stock para completar: {item.prenda.nombre}")
+                        return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
+
+                # Descontar stock y generar movimientos
+                for item in detalles_items:
+                    prenda = item.prenda
+                    prenda.stock -= item.cantidad
+                    if prenda.stock <= 0:
+                        prenda.stock = 0
+                        prenda.activo = False
+                    prenda.save()
+
+                    MovimientoInventario.objects.create(
+                        idPrenda=prenda,
+                        idDetalle=item,
+                        tipoMovimiento='SALIDA',
+                        cantidad=item.cantidad
+                    )
+
+            # Buscamos o creamos el estado respetando el nombre exacto (ej: 'En Proceso')
+            estado_obj, _ = EstadoPedido.objects.get_or_create(estado_pedido=nuevo_estado_nombre)
             pedido.estado = estado_obj
             pedido.save()
             messages.success(request, f"✅ Estado de la orden actualizado a {nuevo_estado_val}")
@@ -476,8 +561,7 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
     detalles = DetallePedido.objects.filter(pedido=pedido, prenda__idLocal=local)
     
     totales = detalles.aggregate(
-        total=models.Sum('total_pedido'),
-        abono=models.Sum('total_abono')
+        total=models.Sum('total_pedido')
     )
     
     return render(request, "detalle_pedido_vendedor.html", {
@@ -485,6 +569,126 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
         "detalles": detalles, 
         "local": local,
         "total_venta_local": totales['total'] or 0,
-        "total_abono_local": totales['abono'] or 0,
         "estados_pedido": EstadoPedido.ESTADO_CHOICES
+    })
+
+def exportar_ventas_excel(request, id_local):
+    if "usuario_id" not in request.session:
+        return redirect("login")
+    
+    usuario_id = request.session.get("usuario_id")
+    local = get_object_or_404(Local, IdLocal=id_local, IdUsuario_id=usuario_id)
+    
+    # Filtros (los mismos que en la vista)
+    p_estado = request.GET.get('p_estado', '')
+    p_fecha_inicio = request.GET.get('p_fecha_inicio', '')
+    p_fecha_fin = request.GET.get('p_fecha_fin', '')
+    p_min_val = request.GET.get('p_min_val', '')
+    p_max_val = request.GET.get('p_max_val', '')
+
+    detalles = DetallePedido.objects.filter(prenda__idLocal=local).select_related('pedido', 'pedido__usuario', 'pedido__estado', 'prenda')
+
+    if p_estado:
+        detalles = detalles.filter(pedido__estado__estado_pedido=p_estado)
+    if p_fecha_inicio:
+        detalles = detalles.filter(pedido__fecha_pedido__date__gte=p_fecha_inicio)
+    if p_fecha_fin:
+        detalles = detalles.filter(pedido__fecha_pedido__date__lte=p_fecha_fin)
+    if p_min_val:
+        detalles = detalles.filter(total_pedido__gte=p_min_val)
+    if p_max_val:
+        detalles = detalles.filter(total_pedido__lte=p_max_val)
+
+    data = []
+    for d in detalles:
+        data.append({
+            'ID Pedido': d.pedido.idPedido,
+            'Fecha': d.pedido.fecha_pedido.replace(tzinfo=None),
+            'Cliente': f"{d.pedido.usuario.nombres} {d.pedido.usuario.apellidos}",
+            'Producto': d.prenda.nombre,
+            'Talla': d.talla,
+            'Cantidad': d.cantidad,
+            'Precio Unitario': d.prenda.precio,
+            'Total Item': d.total_pedido,
+            'Estado': d.pedido.estado.estado_pedido
+        })
+
+    df = pd.DataFrame(data)
+    
+    # Crear respuesta HTTP con el archivo Excel
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="Reporte_Ventas_{local.Nombre_local}_{now().date()}.xlsx"'
+    
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Ventas Detalladas')
+        
+        # Auto-ajuste de columnas
+        worksheet = writer.sheets['Ventas Detalladas']
+        for col in worksheet.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try: max_length = max(max_length, len(str(cell.value)))
+                except: pass
+            worksheet.column_dimensions[column].width = max_length + 2
+
+    return response
+
+def ver_reporte_pdf(request, id_local):
+    """Genera una vista limpia para imprimir como PDF basada en los mismos filtros"""
+    if "usuario_id" not in request.session:
+        return redirect("login")
+    
+    usuario_id = request.session.get("usuario_id")
+    local = get_object_or_404(Local, IdLocal=id_local, IdUsuario_id=usuario_id)
+    
+    p_estado = request.GET.get('p_estado', '')
+    p_fecha_inicio = request.GET.get('p_fecha_inicio', '')
+    p_fecha_fin = request.GET.get('p_fecha_fin', '')
+
+    pedidos = Pedido.objects.filter(detallepedido__prenda__idLocal=local).distinct().annotate(
+        valor_venta=models.Sum('detallepedido__total_pedido', filter=models.Q(detallepedido__prenda__idLocal=local))
+    )
+
+    if p_estado: pedidos = pedidos.filter(estado__estado_pedido=p_estado)
+    if p_fecha_inicio: pedidos = pedidos.filter(fecha_pedido__date__gte=p_fecha_inicio)
+    if p_fecha_fin: pedidos = pedidos.filter(fecha_pedido__date__lte=p_fecha_fin)
+
+    total_general = pedidos.filter(estado__estado_pedido='COMPLETADO').aggregate(models.Sum('valor_venta'))['valor_venta__sum'] or 0
+
+    return render(request, "reporte_pdf.html", {
+        "local": local,
+        "pedidos": pedidos.order_by('-fecha_pedido'),
+        "total_general": total_general,
+        "filtros": {"inicio": p_fecha_inicio, "fin": p_fecha_fin, "estado": p_estado}
+    })
+
+def previa_excel_local(request, id_local):
+    """Muestra una tabla estilo Excel antes de descargar el archivo real"""
+    if "usuario_id" not in request.session:
+        return redirect("login")
+    
+    usuario_id = request.session.get("usuario_id")
+    local = get_object_or_404(Local, IdLocal=id_local, IdUsuario_id=usuario_id)
+    
+    p_estado = request.GET.get('p_estado', '')
+    p_fecha_inicio = request.GET.get('p_fecha_inicio', '')
+    p_fecha_fin = request.GET.get('p_fecha_fin', '')
+    p_min_val = request.GET.get('p_min_val', '')
+    p_max_val = request.GET.get('p_max_val', '')
+
+    detalles = DetallePedido.objects.filter(prenda__idLocal=local).select_related('pedido', 'pedido__usuario', 'pedido__estado', 'prenda')
+
+    if p_estado: detalles = detalles.filter(pedido__estado__estado_pedido=p_estado)
+    if p_fecha_inicio: detalles = detalles.filter(pedido__fecha_pedido__date__gte=p_fecha_inicio)
+    if p_fecha_fin: detalles = detalles.filter(pedido__fecha_pedido__date__lte=p_fecha_fin)
+    if p_min_val: detalles = detalles.filter(total_pedido__gte=p_min_val)
+    if p_max_val: detalles = detalles.filter(total_pedido__lte=p_max_val)
+
+    return render(request, "previa_excel.html", {
+        "local": local,
+        "detalles": detalles.order_by('-pedido__fecha_pedido'),
+        "p_estado": p_estado,
+        "p_fecha_inicio": p_fecha_inicio,
+        "p_fecha_fin": p_fecha_fin,
     })

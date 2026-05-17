@@ -2,26 +2,26 @@
 {% block titulo %} Registro | UniSena {% endblock %}
 {% block contenido %}
 
-<h4 class="text-center mb-4">Crear cuenta</h4>
+<h4 class="text-center mb-2">Crear cuenta</h4>
 
-{% if messages %}
-  {% for message in messages %}
-    <div class="alert alert-custom">{{ message }}</div>
-  {% endfor %}
-{% endif %}
+<style>
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+  .msj-bonito { transition: opacity 0.5s ease; }
+</style>
 
 <form method="POST">
   {% csrf_token %}
   
   <div class="row">
-    <div class="col-md-6 mb-3">
+    <div class="col-md-6 mb-2">
       <label>Nombres</label>
       <div class="input-group">
         <span class="input-group-text"><i class="bi bi-person"></i></span>
         <input type="text" name="nombres" class="form-control" required />
       </div>
     </div>
-    <div class="col-md-6 mb-3">
+    <div class="col-md-6 mb-2">
       <label>Apellidos</label>
       <div class="input-group">
         <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <div class="mb-3">
+  <div class="mb-2">
     <label>Correo</label>
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-envelope"></i></span>
@@ -38,15 +38,16 @@
     </div>
   </div>
 
-  <div class="mb-3">
+  <div class="mb-2">
     <label>Fecha nacimiento</label>
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-calendar"></i></span>
       <input type="date" name="fecha_nacimiento" class="form-control" required />
     </div>
+    <small id="errorFecha" class="text-danger font-bold"></small>
   </div>
 
-  <div class="mb-3">
+  <div class="mb-2">
     <label>Tipo identificación</label>
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
@@ -58,7 +59,7 @@
     </div>
   </div>
 
-  <div class="mb-3">
+  <div class="mb-2">
     <label>Número identificación</label>
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-hash"></i></span>
@@ -66,11 +67,11 @@
     </div>
   </div>
 
-  <div class="mb-3">
+  <div class="mb-2">
     <label>Contraseña</label>
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-lock"></i></span>
-      <input type="password" name="password" id="password" class="form-control" required>
+      <input type="password" name="password" id="password" class="form-control" required minlength="8" maxlength="20">
       <button type="button" class="btn btn-outline-secondary" onclick="verPassword()">
         <i class="bi bi-eye"></i>
       </button>
@@ -81,7 +82,16 @@
     <small id="textoSeguridad"></small>
   </div>
 
-  <button class="btn btn-main w-100 text-white mb-3">Registrarse</button>
+  <!-- Mensajes de error del servidor (ya no flotan) -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-danger py-2 text-center text-xs font-bold uppercase tracking-widest mb-2" style="border-radius: 1rem; border: none; background-color: #fee2e2; color: #b91c1c;">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <button class="btn btn-main w-100 text-white mb-2">Registrarse</button>
 
   <div class="text-center">
     ¿Ya tienes cuenta?
@@ -106,12 +116,12 @@
  password.addEventListener("keyup", function(){
  let valor = password.value
  let fuerza = 0
- if(valor.length >= 6) fuerza++
+ if(valor.length >= 8) fuerza++
  if(/[A-Z]/.test(valor)) fuerza++
  if(/[0-9]/.test(valor)) fuerza++
  if(/[^A-Za-z0-9]/.test(valor)) fuerza++
 
- if(fuerza == 1) {
+ if(fuerza <= 1) {
  barra.style.width="25%"
  barra.className="progress-bar bg-danger"
  texto.innerHTML="Contraseña débil"
@@ -133,19 +143,9 @@
  }
  })
 
- setTimeout(function(){
-let alertas = document.querySelectorAll(".alert")
-alertas.forEach(function(alerta){
-alerta.style.transition = "opacity 0.5s"
-alerta.style.opacity = "0"
-setTimeout(function(){
-alerta.remove()
-},500)
-})
-},3000)
-
   // Seleccionamos el campo de fecha por su nombre o ID
   const inputFecha = document.querySelector('input[name="fecha_nacimiento"]');
+  const errorFecha = document.getElementById("errorFecha");
 
   if (inputFecha) {
     const hoy = new Date();
@@ -164,14 +164,14 @@ alerta.remove()
     inputFecha.setAttribute("max", fechaMax);
     inputFecha.setAttribute("min", fechaMin);
     
-    // Opcional: Evitar que escriban manualmente fechas fuera del rango
-    inputFecha.addEventListener('blur', function() {
+    inputFecha.addEventListener('change', function() {
       if (this.value > fechaMax) {
         this.value = fechaMax;
-        alert("La fecha no puede ser futura.");
+        errorFecha.innerHTML = "❌ La fecha no puede ser futura.";
       } else if (this.value < fechaMin) {
-        this.value = fechaMin;
-        alert("Lo sentimos, el límite de edad es de 70 años.");
+        errorFecha.innerHTML = "⚠️ El límite de edad es de 70 años.";
+      } else {
+        errorFecha.innerHTML = "";
       }
     });
   }

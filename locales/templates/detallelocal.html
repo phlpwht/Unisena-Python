@@ -54,6 +54,10 @@
       🛒 Pedidos 
     </a>
     
+    <a href="{% url 'detalle_local' local.IdLocal %}?reportes=1" class="bg-gray-100 hover:bg-[#125f58] hover:text-white p-3 rounded-lg transition">
+      📊 Reportes
+    </a>
+    
   </div>
 
   <!-- SEPARADOR -->
@@ -110,7 +114,7 @@
         <div id="contenido-derecho" class="md:w-3/4 bg-white rounded-2xl shadow-lg p-6">
 
   <!-- BIENVENIDA -->
- <div id="bienvenida" class="text-center mt-40 {% if mostrar_inventario or mostrar_formulario or prenda or mostrar_pedidos %}hidden{% endif %}">
+ <div id="bienvenida" class="text-center mt-40 {% if mostrar_inventario or mostrar_formulario or prenda or mostrar_pedidos or mostrar_reportes %}hidden{% endif %}">
   <h2 class="text-[#125f58] text-xl font-bold mb-2">Bienvenido 👋</h2>
   <p class="text-gray-500 text-sm">
     Selecciona una opción del menú para gestionar tus uniformes.
@@ -141,6 +145,10 @@
 </div>
 <div id="pedidos-panel" class="{% if not mostrar_pedidos %}hidden{% endif %}">
   {% include "pedidoslocal.html" %}
+</div>
+
+<div id="reportes-panel" class="{% if not mostrar_reportes %}hidden{% endif %}">
+  {% include "reporteslocal.html" %}
 </div>
 
 </div>

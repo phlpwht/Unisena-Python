@@ -18,8 +18,13 @@ class Prendas(models.Model):
         max_length=3,
         choices=TALLA_CHOICES
     )
-    material = models.CharField(max_length=50)
-    stock = models.IntegerField()
+    MATERIAL_CHOICES = [
+        ('Algodon', 'Algodón'),
+        ('Malla', 'Malla'),
+    ]
+    material = models.CharField(max_length=50, choices=MATERIAL_CHOICES)
+    stock = models.IntegerField(validators=[MinValueValidator(1)])
+    activo = models.BooleanField(default=True)
     fechaPublicacion = models.DateTimeField(auto_now_add=True)
     TIPO_PRENDA_CHOICES = [
         ('unidad', 'Unidad'), ('completa', 'Prenda Completa'),
@@ -47,7 +52,7 @@ class EstadoPedido(models.Model):
     id_estado = models.AutoField(primary_key=True)
     ESTADO_CHOICES = [
         ('PENDIENTE', 'Pendiente'),
-        ('PROCESO', 'En Proceso'),
+        ('En Proceso', 'En Proceso'),
         ('COMPLETADO', 'Completado'),
         ('CANCELADO', 'Cancelado'),
     ]

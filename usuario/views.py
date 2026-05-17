@@ -182,6 +182,11 @@ def registro_view(request):
         num_identificacion = request.POST["num_identificacion"]
         password = request.POST["password"]
 
+        # --- VALIDACIÓN DE LONGITUD DE CONTRASEÑA ---
+        if len(password) < 8 or len(password) > 20:
+            messages.error(request, "❌ La contraseña debe tener entre 8 y 20 caracteres.")
+            return render(request, "registro.html")
+
         # --- VALIDACIÓN DE FECHA DE NACIMIENTO ---
         try:
             # Convertimos la cadena de la fecha en un objeto de fecha
@@ -198,7 +203,7 @@ def registro_view(request):
             edad = hoy.year - fecha_nac_dt.year - ((hoy.month, hoy.day) < (fecha_nac_dt.month, fecha_nac_dt.day))
             
             if edad > 70:
-                messages.error(request, "❌ Lo sentimos, no puedes registrarte si tienes más de 70 años.")
+                messages.error(request, "⚠️ ¡Atención! El límite de edad para el registro en UniSena es de 70 años. ¡Agradecemos mucho tu interés! ✨")
                 return render(request, "registro.html")
                 
         except (ValueError, TypeError):

@@ -92,7 +92,7 @@
 
                     <div class="flex flex-col sm:flex-row items-center gap-4 pt-6 border-t border-dashed border-gray-200">
                         <div class="flex-grow">
-                            <p class="text-4xl font-black text-[#125f58] tracking-tighter">${{ prenda.precio|floatformat:0 }}</p>
+                            <p class="text-4xl font-black text-[#125f58] tracking-tighter">COP ${{ prenda.precio|floatformat:0 }}</p>
                             <p class="text-xs font-bold {% if prenda.stock <= 5 %}text-red-500 animate-pulse{% else %}text-gray-400{% endif %} mt-1 uppercase">
                                 Stock: {{ prenda.stock }} unidades
                             </p>
@@ -187,7 +187,7 @@
                             </p>
                             <p class="text-[8px] text-[#125f58] font-bold uppercase tracking-widest">${p.material} | ${p.tipo}</p>
                             <div class="mt-auto flex justify-between items-end pt-2 border-t border-dashed border-gray-100">
-                                <span class="text-[#125f58] font-black text-base leading-none">$${p.precio}</span>
+                                <span class="text-[#125f58] font-black text-base leading-none">COP $${p.precio}</span>
                                 <span class="text-[8px] font-black {% if p.stock <= 5 %}text-red-500 animate-pulse{% else %}text-gray-300{% endif %} uppercase tracking-tighter">Stock: ${p.stock}</span>
                             </div>
                         </div>
