@@ -23,7 +23,7 @@ class Prendas(models.Model):
         ('Malla', 'Malla'),
     ]
     material = models.CharField(max_length=50, choices=MATERIAL_CHOICES)
-    stock = models.IntegerField(validators=[MinValueValidator(1)])
+    stock = models.IntegerField(validators=[MinValueValidator(0)])
     activo = models.BooleanField(default=True)
     fechaPublicacion = models.DateTimeField(auto_now_add=True)
     TIPO_PRENDA_CHOICES = [

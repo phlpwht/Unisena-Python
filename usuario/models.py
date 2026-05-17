@@ -31,7 +31,7 @@ class Usuario(models.Model):
         max_length=2,
         choices=TIPOS_IDENTIFICACION
     )    
-    num_identificacion = models.CharField(max_length=10, unique=True)    
+    num_identificacion = models.CharField(max_length=15, unique=True)    
     password = models.CharField(max_length=255)
     reset_codigo = models.CharField(max_length=6, null=True, blank=True)
     reset_codigo_fecha = models.DateTimeField(null=True, blank=True)

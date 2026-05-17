@@ -1,3 +1,4 @@
+import re
 from uniformes.models import Prendas, Pedido, DetallePedido, EstadoPedido
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -45,10 +46,29 @@ def lista_locales(request):
 
 
 def crear_local(request):
-    if request.method == 'POST':
+    if request.session.get("usuario_rol") != "Vendedor":
+        messages.error(request, "Acceso denegatedo. Solo vendedores pueden crear locales.")
+        return redirect("landing")
 
+    if request.method == 'POST':
         usuario_id = request.session.get("usuario_id")
         total_locales = Local.objects.filter(IdUsuario_id=usuario_id).count()
+
+        nombre_local = request.POST.get('Nombre_local', '').strip()
+        direccion = request.POST.get('Ubicacion_direccion', '').strip()
+        descripcion = request.POST.get('Descripcion', '').strip()
+
+        errores = []
+        if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
+        if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre_local):
+            errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
+        if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
+        if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
+
+        if errores:
+            for error in errores:
+                messages.error(request, error)
+            return render(request, 'formulario.html', {'local': request.POST})
 
         if total_locales >= 3:
             messages.error(request, "Solo puedes registrar máximo 3 locales ❌")
@@ -56,9 +76,9 @@ def crear_local(request):
 
         Local.objects.create(
             IdUsuario_id=usuario_id,
-            Nombre_local=request.POST.get('Nombre_local'),
-            Descripcion=request.POST.get('Descripcion'),
-            Ubicacion_direccion=request.POST.get('Ubicacion_direccion'),
+            Nombre_local=nombre_local,
+            Descripcion=descripcion,
+            Ubicacion_direccion=direccion,
             Imagen=request.FILES.get('Imagen'),
             Horaapertura = request.POST.get('Horaapertura') or None,
             HoraCierre = request.POST.get('HoraCierre') or None
@@ -75,9 +95,31 @@ def editar_local(request, id):
     usuario_id = request.session.get("usuario_id")
     local = get_object_or_404(Local, IdLocal=id, IdUsuario_id=usuario_id)
     if request.method == 'POST':
-        local.Nombre_local = request.POST.get('Nombre_local')
-        local.Descripcion = request.POST.get('Descripcion')
-        local.Ubicacion_direccion = request.POST.get('Ubicacion_direccion')
+        nombre_local = request.POST.get('Nombre_local', '').strip()
+        direccion = request.POST.get('Ubicacion_direccion', '').strip()
+        descripcion = request.POST.get('Descripcion', '').strip()
+
+        errores = []
+        if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
+        if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre_local):
+            errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
+        if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
+        if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
+
+        if errores:
+            for error in errores:
+                messages.error(request, error)
+            
+            # 🛡️ Preservar lo que el usuario escribió en el objeto local antes de re-renderizar
+            local.Nombre_local = nombre_local
+            local.Ubicacion_direccion = direccion
+            local.Descripcion = descripcion
+
+            return render(request, 'formulario.html', {'local': local})
+
+        local.Nombre_local = nombre_local
+        local.Descripcion = descripcion
+        local.Ubicacion_direccion = direccion
         if request.FILES.get('Imagen'):
             local.Imagen = request.FILES.get('Imagen')
         hora_apertura = request.POST.get('Horaapertura')
@@ -161,8 +203,10 @@ def eliminar_local(request, id):
 
 
 def dashboard_vendedor(request):
-    if "usuario_id" not in request.session:
-        return redirect("login")
+    if request.session.get("usuario_rol") != "Vendedor":
+        messages.error(request, "Acceso denegado. Se requiere rol de Vendedor.")
+        return redirect("landing")
+
     usuario_id = request.session.get("usuario_id")
     total_locales = Local.objects.filter(IdUsuario_id=usuario_id).count()
     puede_crear = total_locales < 3
@@ -488,10 +532,13 @@ def toggle_activo_local(request, id):
     return redirect('lista_locales')
 
 def ver_movimientos_prenda(request, id_prenda):
+    usuario_id = request.session.get("usuario_id")
     if request.session.get("usuario_rol") != "Vendedor":
+        messages.error(request, "No tienes permiso para ver esta información.")
         return redirect('landing')
     
-    prenda = get_object_or_404(Prendas, pk=id_prenda)
+    # 🛡️ SEGURIDAD: Validamos que la prenda pertenezca a un local del vendedor actual
+    prenda = get_object_or_404(Prendas, pk=id_prenda, idLocal__IdUsuario_id=usuario_id)
     movimientos = MovimientoInventario.objects.filter(idPrenda=prenda).order_by('-fecha')
     
     return render(request, "movimiento.html", {"prenda": prenda, "movimientos": movimientos})
@@ -561,14 +608,20 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
     detalles = DetallePedido.objects.filter(pedido=pedido, prenda__idLocal=local)
     
     totales = detalles.aggregate(
-        total=models.Sum('total_pedido')
+        total=models.Sum('total_pedido'),
+        abono=models.Sum('total_abono')
     )
+    total_venta = totales['total'] or 0
+    total_abono = totales['abono'] or 0
+    saldo_pendiente = total_venta - total_abono
     
     return render(request, "detalle_pedido_vendedor.html", {
         "pedido": pedido, 
         "detalles": detalles, 
         "local": local,
-        "total_venta_local": totales['total'] or 0,
+        "total_venta_local": total_venta,
+        "total_abono_local": total_abono,
+        "saldo_pendiente_local": saldo_pendiente,
         "estados_pedido": EstadoPedido.ESTADO_CHOICES
     })
 

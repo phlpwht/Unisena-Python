@@ -1,4 +1,4 @@
-import os, json
+import os, json, re
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from .models import Prendas, Pedido, DetallePedido, EstadoPedido
@@ -33,6 +33,16 @@ def crear_prenda(request, id_local):
 
         errores = []
 
+        # Validación de longitud (Modelo: 100)
+        if len(nombre) > 100:
+            errores.append("❌ El nombre es demasiado largo (máx 100)")
+
+        if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
+            errores.append("❌ El nombre solo puede contener letras, números y espacios")
+
+        if len(descripcion) > 500:
+            errores.append("❌ La descripción es demasiado larga (máx 500)")
+
         # Validación de imagen
         if not imagen:
             errores.append("❌ La imagen es obligatoria")
@@ -42,14 +52,18 @@ def crear_prenda(request, id_local):
             precio_decimal = Decimal(precio)
             if precio_decimal <= 0:
                 errores.append("❌ El precio debe ser mayor a 0 COP 💰")
+            if precio_decimal > 500000:
+                errores.append("❌ El precio no puede exceder los 500,000 COP 💰")
         except:
             errores.append("❌ Precio inválido")
 
         # Validación de stock
         try:
             stock_int = int(stock)
-            if stock_int <= 0:
-                errores.append("❌ El stock debe ser mayor a 0 📦")
+            if stock_int < 0:
+                errores.append("❌ El stock no puede ser negativo 📦")
+            if stock_int > 1000:
+                errores.append("❌ El stock máximo permitido es de 1000 unidades 📦")
         except:
             errores.append("❌ Stock inválido")
 
@@ -80,6 +94,7 @@ def crear_prenda(request, id_local):
                 material=material,
                 tipoPrenda=tipo_prenda,
                 imagen=imagen,
+                activo=stock_int >= 1 # Se crea activo solo si tiene stock
             )
 
             # Registrar el movimiento de entrada en el inventario
@@ -126,19 +141,33 @@ def editar_prenda(request, id_prenda):
 
         errores = []
 
+        # Validación de longitud (Modelo: 100)
+        if len(nombre) > 100:
+            errores.append("❌ El nombre es demasiado largo (máx 100)")
+
+        if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
+            errores.append("❌ El nombre solo puede contener letras, números y espacios")
+
+        if len(descripcion) > 500:
+            errores.append("❌ La descripción es demasiado larga (máx 500)")
+
         # Validación de precio
         try:
             precio_decimal = Decimal(precio)
             if precio_decimal <= 0:
                 errores.append("❌ El precio debe ser mayor a 0 COP 💰")
+            if precio_decimal > 500000:
+                errores.append("❌ El precio no puede exceder los 500,000 COP 💰")
         except:
             errores.append("❌ Precio inválido")
 
         # Validación de stock
         try:
             stock_int = int(stock)
-            if stock_int <= 0:
-                errores.append("❌ El stock debe ser mayor a 0 📦")
+            if stock_int < 0:
+                errores.append("❌ El stock no puede ser negativo 📦")
+            if stock_int > 1000:
+                errores.append("❌ El stock máximo permitido es de 1000 unidades 📦")
         except:
             errores.append("❌ Stock inválido")
 
@@ -181,9 +210,11 @@ def editar_prenda(request, id_prenda):
         if imagen:
             prenda.imagen = imagen
         
-        # Si se añade stock a un producto agotado, se reactiva automáticamente
-        if prenda.stock > 0:
+        # Lógica de visibilidad automática según el stock
+        if prenda.stock >= 1:
             prenda.activo = True
+        else:
+            prenda.activo = False
 
         try:
             prenda.save()
@@ -322,10 +353,18 @@ def bulk_upload_prendas(request, id_local):
                     # Validaciones básicas
                     if not nombre:
                         raise ValueError("El nombre no puede estar vacío.")
+                    if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
+                        raise ValueError(f"El nombre '{nombre}' contiene caracteres especiales no permitidos.")
+                    if len(nombre) > 100 or len(descripcion) > 500:
+                        raise ValueError("Nombre o descripción exceden la longitud permitida.")
                     if precio <= 0:
                         raise ValueError("El precio debe ser mayor a 0.")
+                    if precio > 500000:
+                        raise ValueError("El precio no puede exceder los 500,000 COP.")
                     if stock <= 0:
                         raise ValueError("El stock debe ser mayor a 0.")
+                    if stock > 1000:
+                        raise ValueError("El stock no puede exceder las 1000 unidades.")
                     if talla not in [choice[0] for choice in Prendas.TALLA_CHOICES]: # Asumiendo que tienes TALLA_CHOICES en tu modelo
                         tallas_validas = ", ".join([choice[0] for choice in Prendas.TALLA_CHOICES])
                         raise ValueError(f"Talla '{talla}' no válida. Opciones: {tallas_validas}.")
@@ -678,6 +717,50 @@ def procesar_pago(request):
             subtotal = prenda.precio * cant
             total_p += subtotal
             prendas_list.append((prenda, cant, subtotal))
+            
+             # 🚨 VALIDACIÓN: Abono mínimo del 20%
+        min_abono_requerido = total_p * Decimal('0.20')
+        if abono_total < min_abono_requerido:
+            messages.error(request, f"⚠️ El abono mínimo para esta compra es de COP ${min_abono_requerido:,.0f} (20%).")
+            return redirect('ver_carrito')
+
+        # 2. Obtener o crear el estado inicial
+        estado_inicial, _ = EstadoPedido.objects.get_or_create(estado_pedido='PENDIENTE')
+
+        # Calcular el número correlativo para este cliente específico
+        conteo_usuario = Pedido.objects.filter(usuario_id=usuario_id).count()
+        nuevo_num_cliente = conteo_usuario + 1
+
+        # 3. Crear el Pedido
+        nuevo_pedido = Pedido.objects.create(
+            usuario_id=usuario_id,
+            estado=estado_inicial,
+            num_pedido_cliente=nuevo_num_cliente
+        )
+
+        for prenda, cant, subtotal in prendas_list:
+            # Calculamos un abono proporcional para cada línea de detalle
+            abono_linea = (subtotal / total_p * abono_total) if total_p > 0 else Decimal(0)
+            
+            DetallePedido.objects.create(
+                pedido=nuevo_pedido,
+                prenda=prenda,
+                cantidad=cant,
+                talla=prenda.talla,
+                total_pedido=subtotal,
+                total_abono=abono_linea
+            )
+
+        # 4. Limpiar del carrito SOLO los productos comprados
+        for p_id in selected_ids:
+            if p_id in carrito:
+                del carrito[p_id]
+        
+        request.session.modified = True
+        messages.success(request, "Pedido generado con éxito ✅")
+        return redirect('ver_pedido', id_pedido=nuevo_pedido.idPedido)
+    
+    return redirect('ver_carrito')
 def ver_pedido(request, id_pedido):
     usuario_id = request.session.get("usuario_id")
     pedido = get_object_or_404(Pedido, idPedido=id_pedido, usuario_id=usuario_id)
@@ -930,11 +1013,15 @@ def actualizar_fecha_entrega(request, id_pedido):
     return redirect('ver_pedido', id_pedido=id_pedido)
 
 def calificar_local(request, id_local):
-    if request.session.get("usuario_rol") == "Vendedor":
-        messages.error(request, "Los vendedores no pueden calificar locales 🚫")
+    if "usuario_id" not in request.session:
+        messages.warning(request, "Debes iniciar sesión para calificar 🔒")
+        return redirect('login')
+
+    if request.session.get("usuario_rol") != "Cliente":
+        messages.error(request, "Solo los clientes pueden calificar locales 🚫")
         return redirect(request.META.get('HTTP_REFERER', 'landing'))
 
-    if request.method == "POST" and "usuario_id" in request.session:
+    if request.method == "POST":
         local = get_object_or_404(Local, IdLocal=id_local)
         comentario = request.POST.get("comentario")
         valoracion = request.POST.get("valoracion")

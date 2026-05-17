@@ -18,14 +18,14 @@
       <label>Nombres</label>
       <div class="input-group">
         <span class="input-group-text"><i class="bi bi-person"></i></span>
-        <input type="text" name="nombres" class="form-control" required />
+        <input type="text" name="nombres" class="form-control" required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50" title="Solo se permiten letras y espacios, máx 50">
       </div>
     </div>
     <div class="col-md-6 mb-2">
       <label>Apellidos</label>
       <div class="input-group">
         <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
-        <input type="text" name="apellidos" class="form-control" required />
+        <input type="text" name="apellidos" class="form-control" required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50" title="Solo se permiten letras y espacios, máx 50">
       </div>
     </div>
   </div>
@@ -63,7 +63,7 @@
     <label>Número identificación</label>
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-hash"></i></span>
-      <input type="text" name="num_identificacion" class="form-control" maxlength="20" required >
+      <input type="text" name="num_identificacion" class="form-control" maxlength="15" required pattern="\d+" title="Solo se permiten números, máx 15" inputmode="numeric">
     </div>
   </div>
 

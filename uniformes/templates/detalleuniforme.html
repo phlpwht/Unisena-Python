@@ -168,7 +168,9 @@
         let timeLeft = 30;
         function updateReco() {
             const container = document.getElementById('container-reco');
-            const selected = [...pool].sort(() => 0.5 - Math.random()).slice(0, 5);
+            // Blindaje: Filtrar en JS para que solo roten prendas con stock >= 1
+            const activePool = pool.filter(p => p.stock >= 1);
+            const selected = [...activePool].sort(() => 0.5 - Math.random()).slice(0, 5);
             container.innerHTML = '';
             selected.forEach(p => {
                 container.innerHTML += `

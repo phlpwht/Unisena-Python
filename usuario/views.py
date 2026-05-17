@@ -8,7 +8,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail,EmailMultiAlternatives
 from django.conf import settings
 from django.contrib.auth import logout
-import random, datetime
+import random, datetime, re
 from django.utils.timezone import now
 from datetime import timedelta
 from django.db.models import OuterRef, Subquery
@@ -100,7 +100,7 @@ def landing(request):
         ).count()
 
     # Obtenemos uniformes de locales que estén activos
-    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True).select_related('idLocal', 'idLocal__IdUsuario')
+    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
     
     return render(request, "inicio_cliente.html", {
         "nombre": nombre,
@@ -140,7 +140,7 @@ def inicio_cliente(request):
             cart_count = len(carrito) if isinstance(carrito, list) else 0
 
     # 🛒 Obtenemos uniformes de locales que estén activos para que siempre aparezcan
-    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True).select_related('idLocal', 'idLocal__IdUsuario')
+    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
     
     # Contar cuántos pedidos pendientes tiene el cliente
     pedidos_pendientes_count = Pedido.objects.filter(
@@ -182,6 +182,15 @@ def registro_view(request):
         num_identificacion = request.POST["num_identificacion"]
         password = request.POST["password"]
 
+        # --- VALIDACIÓN DE CARACTERES Y LONGITUD (MODELO: 50) ---
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', nombres) or len(nombres) > 50:
+            messages.error(request, "❌ Nombres no válidos (Solo letras, máx 50 caracteres).")
+            return render(request, "registro.html")
+
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', apellidos) or len(apellidos) > 50:
+            messages.error(request, "❌ Apellidos no válidos (Solo letras, máx 50 caracteres).")
+            return render(request, "registro.html")
+
         # --- VALIDACIÓN DE LONGITUD DE CONTRASEÑA ---
         if len(password) < 8 or len(password) > 20:
             messages.error(request, "❌ La contraseña debe tener entre 8 y 20 caracteres.")
@@ -216,8 +225,8 @@ def registro_view(request):
             return render(request, "registro.html")
 
 
-        if not num_identificacion.isdigit() or int(num_identificacion) <= 0:
-            messages.error(request, "Número de documento no válido.")
+        if not num_identificacion.isdigit() or len(num_identificacion) > 15:
+            messages.error(request, "❌ Identificación no válida (Solo números, máx 15 dígitos).")
             return render(request, "registro.html")
 
         if Usuario.objects.filter(correo=email_destino).exists():
