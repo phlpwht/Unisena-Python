@@ -1,6 +1,7 @@
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 from .models import Usuario, Rol
+from django.contrib import messages
 from django.utils import timezone
 from allauth.socialaccount.models import SocialAccount
 import random
@@ -41,9 +42,7 @@ def vincular_sesion_social(sender, request, user, **kwargs):
         usuario_p.save()
 
     except Usuario.DoesNotExist:
-        rol_cliente, _ = Rol.objects.get_or_create(
-            nombre_rol="Cliente"
-        )
+        rol_cliente = Rol.objects.get(id=1)
 
         while True:
             new_num_identificacion = str(
@@ -70,6 +69,8 @@ def vincular_sesion_social(sender, request, user, **kwargs):
     request.session["usuario_nombre"] = f"{usuario_p.nombres} {usuario_p.apellidos}"
     request.session["usuario_rol"] = usuario_p.rol.nombre_rol
     request.session.modified = True
-
+    
+    # Mensaje de bienvenida para login con Google
+    messages.success(request, f"¡Bienvenido de nuevo, {usuario_p.nombres}! 👋")
     
     

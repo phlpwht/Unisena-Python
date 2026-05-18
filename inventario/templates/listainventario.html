@@ -129,13 +129,12 @@
         <td class="p-2">{{ prenda.material }}</td>
         <td class="p-2">{{ prenda.tipoPrenda }}</td>
         <td class="p-2 flex justify-center gap-2">
-          <button
-            type="button"
-            onclick="confirmarAccion('editar', '{{ prenda.idPrenda }}', '{% url 'editar_prenda' prenda.idPrenda %}', '{{ prenda.stock }}')"
-            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg transition"
+          <a
+            href="{% url 'editar_prenda' prenda.idPrenda %}"
+            class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition flex items-center justify-center"
           >
             ✏️
-          </button>
+          </a>
           <button
             type="button"
             onclick="confirmarAccion('eliminar', '{{ prenda.idPrenda }}', '{% url 'eliminar_prenda' prenda.idPrenda %}', '{{ prenda.stock }}')"
@@ -209,20 +208,12 @@
     const divCantidad = document.getElementById("div-cantidad-eliminar");
     const inputCantidad = document.getElementById("cantidad_eliminar");
     const warning = document.getElementById("warning-total-delete");
-
+    
+    // Limpiar estado previo
     if(warning) warning.classList.add("hidden");
+    divCantidad.classList.add("hidden");
 
-    if (tipo === 'editar') {
-        modalText.textContent = "¿Deseas editar este uniforme? 📝";
-        btnSubmit.className = "bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg";
-        btnSubmit.textContent = "Sí, editar";
-        divCantidad.classList.add("hidden");
-        // Para editar, simplemente cambiamos la ubicación al confirmar
-        form.onsubmit = function(e) {
-            e.preventDefault();
-            window.location.href = url;
-        };
-    } else {
+    if (tipo === 'eliminar') {
         modalText.textContent = "¿Deseas retirar existencias de este uniforme? 🗑️";
         btnSubmit.className = "bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg";
         btnSubmit.textContent = "Sí, retirar";

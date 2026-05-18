@@ -51,7 +51,7 @@
     <label>Tipo identificación</label>
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
-      <select name="tipo_identificacion" class="form-control">
+      <select name="tipo_identificacion" id="tipo_id" class="form-control">
         <option value="CC">Cédula</option>
         <option value="TI">Tarjeta identidad</option>
         <option value="CE">Cédula extranjería</option>
@@ -82,13 +82,15 @@
     <small id="textoSeguridad"></small>
   </div>
 
-  <!-- Mensajes de error del servidor (ya no flotan) -->
+  <!-- ✅ MENSAJES FLOTANTES -->
   {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-danger py-2 text-center text-xs font-bold uppercase tracking-widest mb-2" style="border-radius: 1rem; border: none; background-color: #fee2e2; color: #b91c1c;">
-        {{ message }}
-      </div>
-    {% endfor %}
+    <div id="mensaje-popup-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none w-full max-w-md">
+      {% for message in messages %}
+        <div class="bg-white border-l-4 {% if message.tags == 'error' %}border-red-500 text-red-700{% else %}border-[#125f58] text-[#125f58]{% endif %} p-4 rounded-lg shadow-xl text-center font-bold pointer-events-auto mb-2 animate-fade-in text-sm uppercase tracking-tight">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
   {% endif %}
 
   <button class="btn btn-main w-100 text-white mb-2">Registrarse</button>
@@ -146,12 +148,36 @@
   // Seleccionamos el campo de fecha por su nombre o ID
   const inputFecha = document.querySelector('input[name="fecha_nacimiento"]');
   const errorFecha = document.getElementById("errorFecha");
+  const selectTipoId = document.getElementById("tipo_id");
+
+  function actualizarOpcionesId(fechaNac) {
+    if (!fechaNac) return;
+    const hoy = new Date();
+    const cumple = new Date(fechaNac);
+    let edad = hoy.getFullYear() - cumple.getFullYear();
+    const m = hoy.getMonth() - cumple.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) {
+      edad--;
+    }
+
+    // Guardamos la selección previa para intentar mantenerla si es válida
+    const seleccionActual = selectTipoId.value;
+    selectTipoId.innerHTML = "";
+
+    if (edad >= 18) {
+      selectTipoId.innerHTML = `<option value="CC" ${seleccionActual === 'CC' ? 'selected' : ''}>Cédula de ciudadanía</option>
+                                <option value="CE" ${seleccionActual === 'CE' ? 'selected' : ''}>Cédula de extranjería</option>`;
+    } else {
+      selectTipoId.innerHTML = `<option value="TI" ${seleccionActual === 'TI' ? 'selected' : ''}>Tarjeta de identidad</option>
+                                <option value="CE" ${seleccionActual === 'CE' ? 'selected' : ''}>Cédula de extranjería</option>`;
+    }
+  }
 
   if (inputFecha) {
     const hoy = new Date();
     
-    // Calculamos la fecha máxima (Hoy - no permite fechas futuras)
-    const yyyy = hoy.getFullYear();
+    // Calculamos la fecha máxima permitida (Hoy - 14 años para asegurar edad >= 14)
+    const yyyy = hoy.getFullYear() - 14;
     const mm = String(hoy.getMonth() + 1).padStart(2, '0');
     const dd = String(hoy.getDate()).padStart(2, '0');
     const fechaMax = `${yyyy}-${mm}-${dd}`;
@@ -166,15 +192,26 @@
     
     inputFecha.addEventListener('change', function() {
       if (this.value > fechaMax) {
-        this.value = fechaMax;
-        errorFecha.innerHTML = "❌ La fecha no puede ser futura.";
+        errorFecha.innerHTML = "🔞 Debes tener al menos 14 años para registrarte.";
       } else if (this.value < fechaMin) {
         errorFecha.innerHTML = "⚠️ El límite de edad es de 70 años.";
       } else {
         errorFecha.innerHTML = "";
+        actualizarOpcionesId(this.value);
       }
     });
   }
+
+  // 🔥 Ocultar mensajes después de 3 segundos
+  setTimeout(() => {
+    const container = document.getElementById('mensaje-popup-container');
+    if(container) {
+      container.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+      container.style.opacity = '0';
+      container.style.transform = 'translate(-50%, -20px)';
+      setTimeout(() => container.remove(), 500);
+    }
+  }, 3000);
 
 </script>
 

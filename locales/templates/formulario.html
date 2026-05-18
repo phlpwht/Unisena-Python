@@ -5,6 +5,15 @@
     <meta charset="UTF-8">
     <title>{% if local %}Editar Local{% else %}Registrar Local{% endif %} - UniSena</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen font-sans p-4">
 
@@ -61,16 +70,15 @@
                     <form id="localForm" method="POST" enctype="multipart/form-data" class="p-8 space-y-6">
                         {% csrf_token %}
 
-                        <!-- ✅ MENSAJES DE ERROR/ÉXITO -->
+                        <!-- ✅ MENSAJES FLOTANTES -->
                         {% if messages %}
+                        <div id="mensaje-popup-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none w-full max-w-md">
                           {% for message in messages %}
-                            <div class="p-3 rounded-xl mb-4 text-center font-bold text-xs uppercase tracking-widest
-                              {% if message.tags == 'error' %}bg-red-100 text-red-700 border border-red-200
-                              {% elif message.tags == 'success' %}bg-green-100 text-green-700 border border-green-200
-                              {% else %}bg-blue-100 text-blue-700 border border-blue-200{% endif %}">
+                            <div class="bg-white border-l-4 {% if message.tags == 'error' %}border-red-500 text-red-700{% else %}border-[#125f58] text-[#125f58]{% endif %} p-4 rounded-lg shadow-xl text-center font-bold pointer-events-auto mb-2 animate-fade-in text-sm uppercase tracking-tight">
                               {{ message }}
                             </div>
                           {% endfor %}
+                        </div>
                         {% endif %}
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -165,6 +173,17 @@
                 document.getElementById('noImg').classList.add('hidden');
             }
         });
+
+        // 🔥 Ocultar mensajes después de 3 segundos
+        setTimeout(() => {
+          const container = document.getElementById('mensaje-popup-container');
+          if(container) {
+            container.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+            container.style.opacity = '0';
+            container.style.transform = 'translate(-50%, -20px)';
+            setTimeout(() => container.remove(), 500);
+          }
+        }, 3000);
     </script>
 </body>
 </html>

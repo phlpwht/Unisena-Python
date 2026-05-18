@@ -1,0 +1,175 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Perfil | UniSena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
+        .form-input { 
+            @apply w-full p-3 rounded-2xl border-2 border-gray-100 outline-none transition-all duration-300 focus:border-[#125f58] focus:ring-4 focus:ring-[#125f58]/10;
+        }
+        .readonly-field {
+            @apply bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed font-medium;
+        }
+        .alert-custom {
+            background: #e9f9e4;
+            color: #125f58;
+            border-left: 5px solid #125f58;
+            @apply p-3 text-center rounded-xl shadow-sm text-sm font-bold;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-5xl w-full bg-white rounded-[3rem] shadow-2xl shadow-gray-200/50 overflow-hidden border border-gray-100">
+        <div class="flex flex-col lg:flex-row h-full">
+            
+            <!-- FORMULARIO (LADO IZQUIERDO) -->
+            <div class="lg:w-2/3 p-8 md:p-12">
+                <!-- Header / Logo -->
+                <div class="text-center mb-10">
+                    <a href="{% url 'landing' %}">
+                        <img src="{% static 'img/logo.jpeg' %}" class="w-16 h-16 mx-auto rounded-full border-2 border-[#125f58] p-1 shadow-md mb-4 hover:scale-110 transition duration-300">
+                    </a>
+                    <h1 class="text-2xl font-black text-gray-800 uppercase tracking-tighter">Mi Perfil</h1>
+                    <p class="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Actualiza tu información personal</p>
+                    
+                    <!-- Mensaje de éxito -->
+                    {% for message in messages %}
+                        {% if message.tags == 'success' %}
+                        <div id="msg-success" class="alert-custom mt-6">
+                            <i class="bi bi-check-circle-fill"></i> {{ message }}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <form method="POST" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombres</label>
+                            <input type="text" name="nombres" value="{{ usuario.nombres }}" 
+                                {% if es_social %}readonly class="form-input readonly-field"{% else %}class="form-input"{% endif %} 
+                                required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Apellidos</label>
+                            <input type="text" name="apellidos" value="{{ usuario.apellidos }}" 
+                                {% if es_social %}readonly class="form-input readonly-field"{% else %}class="form-input"{% endif %} 
+                                required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Correo Electrónico</label>
+                        <input type="email" name="correo" value="{{ usuario.correo }}" class="form-input" required>
+                        {% for message in messages %}
+                            {% if "correo" in message.message %}
+                                <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ message }}</p>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-dashed border-gray-100">
+                        <div>
+                            <label class="block text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2 ml-1">Fecha Nac.</label>
+                            <input type="text" value="{{ usuario.fecha_nacimiento|date:'Y-m-d' }}" class="form-input readonly-field text-xs" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2 ml-1">Tipo Id</label>
+                            <input type="text" value="{{ usuario.get_tipo_identificacion_display|default:usuario.tipo_identificacion }}" class="form-input readonly-field text-xs" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2 ml-1">Número Id</label>
+                            <input type="text" value="{{ usuario.num_identificacion }}" class="form-input readonly-field text-xs" readonly>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 pt-6">
+                        <a href="{% url 'landing' %}" class="flex-1 text-center py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition">Regresar</a>
+                        <button type="submit" class="flex-[2] py-4 bg-[#125f58] text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-[#125f58]/20 hover:bg-[#0d4742] transition-all active:scale-95">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- PANEL LATERAL (CONSEJOS) -->
+            <div class="lg:w-1/3 bg-[#125f58] p-10 flex flex-col justify-center text-white relative overflow-hidden">
+                <!-- Adorno fondo -->
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
+                <div class="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
+
+                <div class="relative z-10 space-y-8">
+                    <div class="space-y-4">
+                        <h3 class="text-xl font-black uppercase tracking-tighter">Consejos <i class="bi bi-lightbulb"></i></h3>
+                        <p class="text-white/60 text-xs font-medium leading-relaxed">Mantener tu información al día es fundamental para una mejor experiencia en nuestra plataforma.</p>
+                    </div>
+
+                    <ul class="space-y-6">
+                        <li class="flex gap-4">
+                            <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20"><i class="bi bi-envelope-check"></i></div>
+                            <div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest">Notificaciones</h4>
+                                <p class="text-white/70 text-[10px] leading-tight">Usa un correo que revises seguido para no perderte las alertas de tus pedidos.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4">
+                            <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20"><i class="bi bi-person-check"></i></div>
+                            <div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest">Identidad</h4>
+                                <p class="text-white/70 text-[10px] leading-tight">Tus nombres reales permiten que los vendedores te identifiquen al entregar los uniformes.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4">
+                            <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20"><i class="bi bi-shield-lock"></i></div>
+                            <div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest">Privacidad</h4>
+                                <p class="text-white/70 text-[10px] leading-tight">Tys datos sensibles están protegidos y solo se usan para procesos de compra.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4">
+                            <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20"><i class="bi bi-google"></i></div>
+                            <div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest">Google</h4>
+                                <p class="text-white/70 text-[10px] leading-tight">Ten en cuenta que si Iniciaste Sesión con Google no podrás cambiar ninguno de tus datos.</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    {% if es_social %}
+                    <div class="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2rem] mt-10">
+                        <div class="flex items-start gap-3">
+                            <i class="bi bi-google text-lg"></i>
+                            <div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest mb-1 text-white">Cuenta vinculada</h4>
+                                <p class="text-white/60 text-[10px] font-bold leading-tight uppercase italic">
+                                    Ten en cuenta que si iniciaste sesión con Google no podrás cambiar ninguno de tus datos.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-ocultar mensaje de éxito
+        const successMsg = document.getElementById('msg-success');
+        if (successMsg) {
+            setTimeout(() => {
+                successMsg.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                successMsg.style.opacity = '0';
+                successMsg.style.transform = 'translateY(-10px)';
+                setTimeout(() => successMsg.remove(), 500);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

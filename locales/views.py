@@ -62,6 +62,7 @@ def crear_local(request):
         if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre_local):
             errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
+         
         if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
         if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
 
@@ -103,6 +104,8 @@ def editar_local(request, id):
         if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre_local):
             errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
+        if Local.objects.filter(IdUsuario_id=usuario_id, Nombre_local__iexact=nombre_local).exclude(IdLocal=id).exists():
+            errores.append(f"❌ Ya tienes otro local llamado '{nombre_local}'")
         if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
         if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
 
@@ -372,7 +375,9 @@ def detalle_local(request, id):
     # 👇 EDITAR
     prenda_editar = None
     if request.GET.get("editar"):
-        prenda_editar = get_object_or_404(Prendas, pk=request.GET.get("editar"))
+        # Refuerzo de seguridad: solo permitir editar si pertenece al local y al usuario actual
+        prenda_id = request.GET.get("editar")
+        prenda_editar = get_object_or_404(Prendas, pk=prenda_id, idLocal=local)
 
     # 👇 CREAR (NUEVO)
     mostrar_formulario = request.GET.get("crear") == "1"

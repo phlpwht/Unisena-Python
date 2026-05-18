@@ -1,4 +1,4 @@
-from django.shortcuts import render,redirect
+from django.shortcuts import render,redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.contrib import messages
 from uniformes.models import Prendas
@@ -13,6 +13,7 @@ from django.utils.timezone import now
 from datetime import timedelta
 from django.db.models import OuterRef, Subquery
 from django.views.decorators.cache import never_cache
+from allauth.socialaccount.models import SocialAccount
 
 
 
@@ -39,7 +40,9 @@ def login_view(request):
                 request.session["usuario_nombre"] = f"{usuario.nombres} {usuario.apellidos}"
                 request.session["usuario_rol"] = usuario.rol.nombre_rol
 
-
+                  # Mensaje de bienvenida para login tradicional
+                messages.success(request, f"¡Bienvenido de nuevo, {usuario.nombres}! 👋")
+                
                 if usuario.rol.nombre_rol == "Administrador":
                     return redirect("inicio_admin")
 
@@ -214,6 +217,21 @@ def registro_view(request):
             if edad > 70:
                 messages.error(request, "⚠️ ¡Atención! El límite de edad para el registro en UniSena es de 70 años. ¡Agradecemos mucho tu interés! ✨")
                 return render(request, "registro.html")
+            
+            # 3. Validación de edad mínima (14 años)
+            if edad < 14:
+                messages.error(request, "🔞 Lo sentimos, debes tener al menos 14 años para registrarte en UniSena.")
+                return render(request, "registro.html")
+            
+            # --- VALIDACIÓN DE IDENTIFICACIÓN SEGÚN EDAD ---
+            if edad >= 18:
+                if tipo_identificacion == 'TI':
+                    messages.error(request, "❌ Eres mayor de edad, debes seleccionar Cédula de Ciudadanía o de Extranjería.")
+                    return render(request, "registro.html")
+            else: # Menor de edad
+                if tipo_identificacion == 'CC':
+                    messages.error(request, "❌ Eres menor de edad, debes seleccionar Tarjeta de Identidad o de Extranjería.")
+                    return render(request, "registro.html")
                 
         except (ValueError, TypeError):
             messages.error(request, "❌ Formato de fecha de nacimiento no válido.")
@@ -234,7 +252,7 @@ def registro_view(request):
             return render(request, "registro.html")
 
 
-        rol = Rol.objects.get(id=2)
+        rol = Rol.objects.get(id=1)
 
         usuario = Usuario(
             rol=rol,
@@ -441,3 +459,49 @@ def reset_password(request):
             return redirect("login")
 
     return render(request, "reset.html")
+
+@never_cache
+def editar_perfil(request):
+    usuario_id = request.session.get("usuario_id")
+    if not usuario_id:
+        return redirect("login")
+
+    usuario = get_object_or_404(Usuario, id=usuario_id)
+    # Verificar si es una cuenta de Google
+    es_social = SocialAccount.objects.filter(user__email=usuario.correo).exists()
+
+    if request.method == "POST":
+        nombres = request.POST.get("nombres", "").strip()
+        apellidos = request.POST.get("apellidos", "").strip()
+        correo = request.POST.get("correo", "").strip()
+
+        errores = []
+
+        # Si es social, no permitimos cambiar nombres/apellidos en el backend por seguridad
+        if not es_social:
+            if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', nombres) or len(nombres) > 50:
+                errores.append("❌ Nombres no válidos (Solo letras, máx 50 caracteres).")
+
+            if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', apellidos) or len(apellidos) > 50:
+                errores.append("❌ Apellidos no válidos (Solo letras, máx 50 caracteres).")
+
+        # Verificar que el correo no lo tenga OTRO usuario diferente al actual
+        if Usuario.objects.filter(correo=correo).exclude(id=usuario_id).exists():
+            errores.append("❌ El correo ya se encuentra registrado por otro usuario.")
+
+        if errores:
+            for error in errores:
+                messages.error(request, error)
+        else:
+            if not es_social:
+                usuario.nombres = nombres
+                usuario.apellidos = apellidos
+            usuario.correo = correo
+            usuario.save()
+
+            # Actualizar el nombre en la sesión para que el saludo cambie de inmediato
+            request.session["usuario_nombre"] = f"{usuario.nombres} {usuario.apellidos}"
+            messages.success(request, "Perfil actualizado correctamente")
+            return redirect("editar_perfil")
+
+    return render(request, "editar_perfil.html", {"usuario": usuario, "es_social": es_social})

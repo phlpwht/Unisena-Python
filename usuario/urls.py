@@ -17,6 +17,7 @@ urlpatterns = [
     path('inicio-admin/', views.inicio_admin, name='inicio_admin'),
     path('inicio-vendedor/', views.inicio_vendedor, name='inicio_vendedor'),
 
+    path('perfil/editar/', views.editar_perfil, name='editar_perfil'),
     path('logout/', views.logout_view, name='logout'),
     
     # 🛠️ OTRAS RUTAS (ej: restablecer contraseña)

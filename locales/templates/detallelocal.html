@@ -9,6 +9,16 @@
       body {
         background: linear-gradient(135deg, #125f58, #d8f5e0);
       }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+      }
+      .mensaje-auto-hide {
+        transition: opacity 0.5s ease, transform 0.5s ease;
+      }
     </style>
   </head>
 
@@ -132,13 +142,23 @@
   {% include "formprenda.html" %}
 </div>
 {% if messages %}
-<div id="mensaje-popup" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
-  <div class="bg-green-100 text-green-800 p-4 rounded shadow-lg text-center font-semibold pointer-events-auto">
-    {% for message in messages %}
+<div id="mensaje-popup-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none w-full max-w-md">
+  {% for message in messages %}
+    <div class="mensaje-auto-hide bg-white border-l-4 {% if message.tags == 'error' %}border-red-500 text-red-700{% else %}border-[#125f58] text-[#125f58]{% endif %} p-4 rounded-lg shadow-xl text-center font-bold pointer-events-auto mb-2 animate-fade-in text-sm uppercase tracking-tight">
       {{ message }}
-    {% endfor %}
-  </div>
+    </div>
+  {% endfor %}
 </div>
+<script>
+  setTimeout(() => {
+    const container = document.getElementById('mensaje-popup-container');
+    if(container) {
+      container.style.opacity = '0';
+      container.style.transform = 'translate(-50%, -20px)';
+      setTimeout(() => container.remove(), 500);
+    }
+  }, 3000);
+</script>
 {% endif %}
 <div id="inventario-panel" class="{% if not mostrar_inventario %}hidden{% endif %}">
   {% include "listainventario.html" %}
@@ -156,17 +176,7 @@
       </div>
     </div>
 <script>
-// Desaparecer popup después de 3 segundos
 window.addEventListener('DOMContentLoaded', () => {
-  const popup = document.getElementById('mensaje-popup');
-  if(popup) {
-    setTimeout(() => {
-      popup.style.transition = 'opacity 0.3s';
-      popup.style.opacity = '0';
-      setTimeout(() => popup.remove(), 300);
-    }, 2500); // 2 segundos antes de desaparecer
-  }
-
   // Fix para la imagen de vista previa que mencionaste
   const previewImg = document.getElementById("previewImagenCardSide");
   if (previewImg && !previewImg.src.includes('/media/')) {

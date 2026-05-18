@@ -76,7 +76,11 @@
     <div id="mensaje-container" class="fixed inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none">
       {% for message in messages %}
       <div class="bg-white/95 backdrop-blur-xl border-l-[12px] border-[#125f58] text-[#125f58] px-10 py-8 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] mb-4 animate-fade-in pointer-events-auto text-center">
-        <i class="bi bi-bag-check-fill text-5xl block mb-3"></i>
+        {% if "Bienvenido" in message.message %}
+          <i class="bi bi-person-check-fill text-5xl block mb-3"></i>
+        {% else %}
+          <i class="bi bi-bag-check-fill text-5xl block mb-3"></i>
+        {% endif %}
         <span class="font-black uppercase tracking-[0.2em] text-sm">{{ message }}</span>
       </div>
       {% endfor %}
@@ -145,6 +149,11 @@
                 <i class="bi bi-bag-check"></i> Mis pedidos</a></li>
               {% endif %}
 
+              <li class="border-t border-gray-100">
+                <a href="{% url 'editar_perfil' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition">
+                  <i class="bi bi-person-gear"></i> Editar Perfil
+                </a>
+              </li>
               <li class="border-t border-gray-100">
                 <a href="{% url 'logout' %}" class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition font-semibold">
                   <i class="bi bi-box-arrow-right"></i> Cerrar sesión

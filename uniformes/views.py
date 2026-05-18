@@ -39,6 +39,9 @@ def crear_prenda(request, id_local):
 
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
             errores.append("❌ El nombre solo puede contener letras, números y espacios")
+        
+        if Prendas.objects.filter(idLocal__IdUsuario_id=usuario_id, nombre__iexact=nombre).exists():
+            errores.append(f"❌ Ya tienes un uniforme registrado con el nombre '{nombre}'")
 
         if len(descripcion) > 500:
             errores.append("❌ La descripción es demasiado larga (máx 500)")
@@ -50,20 +53,16 @@ def crear_prenda(request, id_local):
         # Validación de precio
         try:
             precio_decimal = Decimal(precio)
-            if precio_decimal <= 0:
-                errores.append("❌ El precio debe ser mayor a 0 COP 💰")
-            if precio_decimal > 500000:
-                errores.append("❌ El precio no puede exceder los 500,000 COP 💰")
+            if precio_decimal <= 0 or precio_decimal > 500000:
+                errores.append("❌ El precio debe estar entre 1 y 500,000 COP 💰")
         except:
             errores.append("❌ Precio inválido")
 
         # Validación de stock
         try:
             stock_int = int(stock)
-            if stock_int < 0:
-                errores.append("❌ El stock no puede ser negativo 📦")
-            if stock_int > 1000:
-                errores.append("❌ El stock máximo permitido es de 1000 unidades 📦")
+            if stock_int < 0 or stock_int > 1000:
+                errores.append("❌ El stock debe estar entre 0 y 1000 unidades 📦")
         except:
             errores.append("❌ Stock inválido")
 
@@ -147,6 +146,9 @@ def editar_prenda(request, id_prenda):
 
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
             errores.append("❌ El nombre solo puede contener letras, números y espacios")
+        
+        if Prendas.objects.filter(idLocal__IdUsuario_id=usuario_id, nombre__iexact=nombre).exclude(pk=id_prenda).exists():
+            errores.append(f"❌ Ya tienes otro uniforme con el nombre '{nombre}'")
 
         if len(descripcion) > 500:
             errores.append("❌ La descripción es demasiado larga (máx 500)")
@@ -154,20 +156,16 @@ def editar_prenda(request, id_prenda):
         # Validación de precio
         try:
             precio_decimal = Decimal(precio)
-            if precio_decimal <= 0:
-                errores.append("❌ El precio debe ser mayor a 0 COP 💰")
-            if precio_decimal > 500000:
-                errores.append("❌ El precio no puede exceder los 500,000 COP 💰")
+            if precio_decimal <= 0 or precio_decimal > 500000:
+                errores.append("❌ El precio debe estar entre 1 y 500,000 COP 💰")
         except:
             errores.append("❌ Precio inválido")
 
         # Validación de stock
         try:
             stock_int = int(stock)
-            if stock_int < 0:
-                errores.append("❌ El stock no puede ser negativo 📦")
-            if stock_int > 1000:
-                errores.append("❌ El stock máximo permitido es de 1000 unidades 📦")
+            if stock_int < 0 or stock_int > 1000:
+                errores.append("❌ El stock debe estar entre 0 y 1000 unidades 📦")
         except:
             errores.append("❌ Stock inválido")
 
@@ -234,7 +232,7 @@ def editar_prenda(request, id_prenda):
             })
 
     # Si se accede por GET, redirige a la página con formulario en modo edición
-    return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?editar={prenda.idPrenda}")
+    return redirect(f"{reverse('detalle_local', kwargs={'id': local.IdLocal})}?editar={prenda.idPrenda}")
 
 
 def eliminar_prenda(request, id_prenda):
@@ -332,6 +330,9 @@ def bulk_upload_prendas(request, id_local):
             for index, row in df.iterrows():
                 try:
                     nombre = str(row['nombre']).strip()
+                    # ✨ Sanitización: Eliminar caracteres especiales automáticamente
+                    nombre = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]', '', nombre)
+                    
                     descripcion = str(row['descripcion']).strip()
                     precio = Decimal(str(row['precio']).replace(',', '.').strip()) # Manejar comas como separador decimal
                     stock = int(str(row['stock']).strip())
@@ -353,18 +354,14 @@ def bulk_upload_prendas(request, id_local):
                     # Validaciones básicas
                     if not nombre:
                         raise ValueError("El nombre no puede estar vacío.")
-                    if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
-                        raise ValueError(f"El nombre '{nombre}' contiene caracteres especiales no permitidos.")
+                    if Prendas.objects.filter(idLocal__IdUsuario_id=usuario_id, nombre__iexact=nombre).exists():
+                        raise ValueError(f"Ya tienes un uniforme registrado con el nombre '{nombre}'.")
                     if len(nombre) > 100 or len(descripcion) > 500:
                         raise ValueError("Nombre o descripción exceden la longitud permitida.")
-                    if precio <= 0:
-                        raise ValueError("El precio debe ser mayor a 0.")
-                    if precio > 500000:
-                        raise ValueError("El precio no puede exceder los 500,000 COP.")
-                    if stock <= 0:
-                        raise ValueError("El stock debe ser mayor a 0.")
-                    if stock > 1000:
-                        raise ValueError("El stock no puede exceder las 1000 unidades.")
+                    if precio <= 0 or precio > 500000:
+                        raise ValueError("El precio debe estar entre 1 y 500,000 COP.")
+                    if stock < 0 or stock > 1000:
+                        raise ValueError("El stock debe estar entre 0 y 1000 unidades.")
                     if talla not in [choice[0] for choice in Prendas.TALLA_CHOICES]: # Asumiendo que tienes TALLA_CHOICES en tu modelo
                         tallas_validas = ", ".join([choice[0] for choice in Prendas.TALLA_CHOICES])
                         raise ValueError(f"Talla '{talla}' no válida. Opciones: {tallas_validas}.")
