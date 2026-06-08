@@ -158,7 +158,7 @@ MEDIA_URL = '/media/'
 # Se usa BASE_DIR para asegurar rutas absolutas correctas en cualquier sistema
 MEDIA_ROOT = BASE_DIR / 'media'
 
-SITE_ID = 2
+SITE_ID = 1
 
 LOGIN_REDIRECT_URL = 'landing'
 LOGOUT_REDIRECT_URL = 'landing'
@@ -172,6 +172,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'none' # Para desarrollo, no pide confirmar correo
 SOCIALACCOUNT_QUERY_EMAIL = True
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -190,3 +191,4 @@ ACCOUNT_USER_DISPLAY = "usuario.utils.custom_user_display"
 
 # Silenciar advertencia de MySQL/MariaDB sobre restricciones condicionales de Allauth
 SILENCED_SYSTEM_CHECKS = ["models.W036"]
+

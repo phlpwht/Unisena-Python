@@ -55,11 +55,11 @@ Antes de comenzar, asegúrate de tener instalado:
    ```bash
    copy .env.example .env
    ```
-   *Es obligatorio configurar DB_NAME, DB_USER, DB_PASSWORD y la SECRET_KEY para que la app inicie.*
+   *Es obligatorio configurar la base de datos, la SECRET_KEY y las credenciales de **Google Auth** junto con el **SITE_DOMAIN** para que la autenticación funcione correctamente.*
 
 5. **Migraciones de Base de Datos:**
+   *El sistema poblará automáticamente los Roles (Cliente, Admin, Vendedor), Estados de Pedido y la configuración de Google.*
    ```bash
-   python manage.py makemigrations
    python manage.py migrate
    ```
 

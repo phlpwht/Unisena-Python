@@ -6,3 +6,4 @@ class UsuarioConfig(AppConfig):
 
     def ready(self):
         import usuario.signals
+        pass

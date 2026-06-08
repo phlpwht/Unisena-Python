@@ -46,7 +46,7 @@ class Pedido(models.Model):
     fecha_entrega = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
-        return "Pedido"
+        return f"Pedido #{self.idPedido} - {self.usuario}"
 
 class EstadoPedido(models.Model):
     id_estado = models.AutoField(primary_key=True)
@@ -87,5 +87,5 @@ class CalificacionPedido(models.Model):
     locales = models.ForeignKey(Local, on_delete=models.CASCADE)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True)
     comentario = models.CharField(max_length=500)
-    valoracion = models.IntegerField()
+    valoracion = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     

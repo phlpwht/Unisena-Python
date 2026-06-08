@@ -70,7 +70,6 @@ def vincular_sesion_social(sender, request, user, **kwargs):
     request.session["usuario_rol"] = usuario_p.rol.nombre_rol
     request.session.modified = True
     
-    # Mensaje de bienvenida para login con Google
-    messages.success(request, f"¡Bienvenido de nuevo, {usuario_p.nombres}! 👋")
+   
     
     
