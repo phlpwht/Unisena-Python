@@ -41,7 +41,7 @@ def login_view(request):
                 request.session["usuario_rol"] = usuario.rol.nombre_rol
 
                   # Mensaje de bienvenida para login tradicional
-                messages.success(request, f"¡Bienvenido de nuevo, {usuario.nombres}! 👋")
+                messages.success(request, f"¡Bienvenido, {usuario.nombres}! 👋")
                 
                 if usuario.rol.nombre_rol == "Administrador":
                     return redirect("inicio_admin")
@@ -471,6 +471,11 @@ def editar_perfil(request):
     es_social = SocialAccount.objects.filter(user__email=usuario.correo).exists()
 
     if request.method == "POST":
+        # Seguridad: Si la cuenta es de Google, no procesamos el guardado
+        if es_social:
+            messages.error(request, "Las cuentas vinculadas a Google no pueden editar su perfil.")
+            return redirect("editar_perfil")
+
         nombres = request.POST.get("nombres", "").strip()
         apellidos = request.POST.get("apellidos", "").strip()
         correo = request.POST.get("correo", "").strip()
@@ -478,12 +483,11 @@ def editar_perfil(request):
         errores = []
 
         # Si es social, no permitimos cambiar nombres/apellidos en el backend por seguridad
-        if not es_social:
-            if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', nombres) or len(nombres) > 50:
-                errores.append("❌ Nombres no válidos (Solo letras, máx 50 caracteres).")
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', nombres) or len(nombres) > 50:
+            errores.append("❌ Nombres no válidos (Solo letras, máx 50 caracteres).")
 
-            if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', apellidos) or len(apellidos) > 50:
-                errores.append("❌ Apellidos no válidos (Solo letras, máx 50 caracteres).")
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', apellidos) or len(apellidos) > 50:
+            errores.append("❌ Apellidos no válidos (Solo letras, máx 50 caracteres).")
 
         # Verificar que el correo no lo tenga OTRO usuario diferente al actual
         if Usuario.objects.filter(correo=correo).exclude(id=usuario_id).exists():
@@ -493,13 +497,12 @@ def editar_perfil(request):
             for error in errores:
                 messages.error(request, error)
         else:
-            if not es_social:
-                usuario.nombres = nombres
-                usuario.apellidos = apellidos
+            usuario.nombres = nombres
+            usuario.apellidos = apellidos
             usuario.correo = correo
             usuario.save()
 
-            # Actualizar el nombre en la sesión para que el saludo cambie de inmediato
+            # Actualizar el nombre en la sesión
             request.session["usuario_nombre"] = f"{usuario.nombres} {usuario.apellidos}"
             messages.success(request, "Perfil actualizado correctamente")
             return redirect("editar_perfil")

@@ -11,10 +11,10 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
         .form-input { 
-            @apply w-full p-3 rounded-2xl border-2 border-gray-100 outline-none transition-all duration-300 focus:border-[#125f58] focus:ring-4 focus:ring-[#125f58]/10;
+            @apply w-full px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white outline-none transition-all duration-300 focus:border-[#125f58] focus:ring-4 focus:ring-[#125f58]/10 text-gray-700 font-medium shadow-sm;
         }
         .readonly-field {
-            @apply bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed font-medium;
+            @apply bg-gray-100/80 border-transparent text-gray-500 cursor-not-allowed font-bold opacity-60 shadow-none;
         }
         .alert-custom {
             background: #e9f9e4;
@@ -29,7 +29,7 @@
         <div class="flex flex-col lg:flex-row h-full">
             
             <!-- FORMULARIO (LADO IZQUIERDO) -->
-            <div class="lg:w-2/3 p-8 md:p-12">
+            <div class="lg:w-[70%] p-8 md:p-12">
                 <!-- Header / Logo -->
                 <div class="text-center mb-10">
                     <a href="{% url 'landing' %}">
@@ -53,22 +53,31 @@
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombres</label>
-                            <input type="text" name="nombres" value="{{ usuario.nombres }}" 
-                                {% if es_social %}readonly class="form-input readonly-field"{% else %}class="form-input"{% endif %} 
-                                required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Nombres Completos</label>
+                            <div class="group">
+                                <input type="text" name="nombres" value="{{ usuario.nombres }}" 
+                                    {% if es_social %}readonly class="form-input readonly-field"{% else %}class="form-input"{% endif %} 
+                                    required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50">
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Apellidos</label>
-                            <input type="text" name="apellidos" value="{{ usuario.apellidos }}" 
-                                {% if es_social %}readonly class="form-input readonly-field"{% else %}class="form-input"{% endif %} 
-                                required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Apellidos Completos</label>
+                            <div class="group">
+                                <input type="text" name="apellidos" value="{{ usuario.apellidos }}" 
+                                    {% if es_social %}readonly class="form-input readonly-field"{% else %}class="form-input"{% endif %} 
+                                    required pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" maxlength="50">
+                            </div>
                         </div>
-                    </div>
+                    </div> 
 
-                    <div>
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Correo Electrónico</label>
-                        <input type="email" name="correo" value="{{ usuario.correo }}" class="form-input" required>
+                    <div class="space-y-3">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Correo Electrónico</label>
+                        <div class="group">
+                            <!-- Se añade w-full y min-w-[300px] para asegurar que se vea todo el correo -->
+                            <input type="email" name="correo" value="{{ usuario.correo }}" 
+                                {% if es_social %}readonly class="form-input readonly-field w-full"{% else %}class="form-input w-full"{% endif %} 
+                                required title="{{ usuario.correo }}" style="min-width: 100%;">
+                        </div>
                         {% for message in messages %}
                             {% if "correo" in message.message %}
                                 <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ message }}</p>
@@ -76,30 +85,41 @@
                         {% endfor %}
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-dashed border-gray-100">
+                    <div class="grid grid-cols-1 {% if not es_social %}md:grid-cols-3{% else %}md:grid-cols-1{% endif %} gap-6 pt-4 border-t border-dashed border-gray-100">
+                        {% if not es_social %}
                         <div>
-                            <label class="block text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2 ml-1">Fecha Nac.</label>
-                            <input type="text" value="{{ usuario.fecha_nacimiento|date:'Y-m-d' }}" class="form-input readonly-field text-xs" readonly>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Nacimiento</label>
+                            <div class="relative">
+                                <input type="text" value="{{ usuario.fecha_nacimiento|date:'Y-m-d' }}" class="form-input readonly-field text-sm" readonly>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2 ml-1">Tipo Id</label>
-                            <input type="text" value="{{ usuario.get_tipo_identificacion_display|default:usuario.tipo_identificacion }}" class="form-input readonly-field text-xs" readonly>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Tipo Identificación</label>
+                            <div class="relative">
+                                <input type="text" value="{{ usuario.get_tipo_identificacion_display|default:usuario.tipo_identificacion }}" class="form-input readonly-field text-sm" readonly>
+                            </div>
                         </div>
+                        {% endif %}
                         <div>
-                            <label class="block text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2 ml-1">Número Id</label>
-                            <input type="text" value="{{ usuario.num_identificacion }}" class="form-input readonly-field text-xs" readonly>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Número Id</label>
+                            <div class="relative">
+                                <input type="text" value="{{ usuario.num_identificacion }}" class="form-input readonly-field text-sm" readonly>
+                            </div>
                         </div>
                     </div>
 
                     <div class="flex gap-4 pt-6">
-                        <a href="{% url 'landing' %}" class="flex-1 text-center py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition">Regresar</a>
-                        <button type="submit" class="flex-[2] py-4 bg-[#125f58] text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-[#125f58]/20 hover:bg-[#0d4742] transition-all active:scale-95">Guardar Cambios</button>
+                        <!-- El botón Regresar ocupará todo el ancho si el usuario es social -->
+                        <a href="{% url 'landing' %}" class="{% if es_social %}w-full{% else %}flex-1{% endif %} text-center py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition">Regresar</a>
+                        {% if not es_social %}
+                            <button type="submit" class="flex-[2] py-4 bg-[#125f58] text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-[#125f58]/20 hover:bg-[#0d4742] transition-all active:scale-95">Guardar Cambios</button>
+                        {% endif %}
                     </div>
                 </form>
             </div>
 
             <!-- PANEL LATERAL (CONSEJOS) -->
-            <div class="lg:w-1/3 bg-[#125f58] p-10 flex flex-col justify-center text-white relative overflow-hidden">
+            <div class="lg:w-[30%] bg-[#125f58] p-10 flex flex-col justify-center text-white relative overflow-hidden">
                 <!-- Adorno fondo -->
                 <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
                 <div class="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16"></div>
@@ -141,7 +161,7 @@
                             <div>
                                 <h4 class="text-[10px] font-black uppercase tracking-widest mb-1 text-white">Cuenta vinculada</h4>
                                 <p class="text-white/60 text-[10px] font-bold leading-tight uppercase italic">
-                                    Ten en cuenta que si iniciaste sesión con Google no podrás cambiar ninguno de tus datos.
+                                    Al usar Google, tus datos de identificación están protegidos y no requieren edición manual.
                                 </p>
                             </div>
                         </div>
