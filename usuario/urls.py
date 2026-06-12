@@ -23,4 +23,9 @@ urlpatterns = [
     # 🛠️ OTRAS RUTAS (ej: restablecer contraseña)
     path('recuperar-password/', views.recuperar_password, name='recuperar_password'),
     path('reset-password/', views.reset_password, name='reset_password'),
+    
+    #Informacion sobre programas, uniformes y sus tipos de especificaciones
+    path('informacion/', views.informacion, name='informacion'),
+    path('programas/', views.programas, name='programas'),
+
 ]

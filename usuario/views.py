@@ -508,3 +508,11 @@ def editar_perfil(request):
             return redirect("editar_perfil")
 
     return render(request, "editar_perfil.html", {"usuario": usuario, "es_social": es_social})
+
+@never_cache
+def informacion(request):
+    return render(request, "informacion.html")
+
+@never_cache
+def programas(request):
+    return render(request, "programas.html")
