@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'locales',
     'uniformes',
     'inventario',
+    'administradores',
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -191,4 +192,3 @@ ACCOUNT_USER_DISPLAY = "usuario.utils.custom_user_display"
 
 # Silenciar advertencia de MySQL/MariaDB sobre restricciones condicionales de Allauth
 SILENCED_SYSTEM_CHECKS = ["models.W036"]
-

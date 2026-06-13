@@ -27,5 +27,6 @@ urlpatterns = [
     path('', include('usuario.urls')),
     path('locales/', include('locales.urls')),
     path('uniformes/', include('uniformes.urls')),
+    path('admin-panel/', include('administradores.urls')), 
     path('accounts/', include('allauth.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -15,4 +15,5 @@ urlpatterns = [
     path('exportar-excel/<int:id_local>/', views.exportar_ventas_excel, name='exportar_ventas_excel'),
     path('reporte-pdf/<int:id_local>/', views.ver_reporte_pdf, name='ver_reporte_pdf'),
     path('previa-excel/<int:id_local>/', views.previa_excel_local, name='previa_excel_local'),
+    path('notificacion/leer/<int:id_notif>/', views.marcar_notificacion_leida, name='marcar_notificacion_leida'),
 ]

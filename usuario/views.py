@@ -14,6 +14,7 @@ from datetime import timedelta
 from django.db.models import OuterRef, Subquery
 from django.views.decorators.cache import never_cache
 from allauth.socialaccount.models import SocialAccount
+from locales.models import Notificacion
 
 
 
@@ -44,7 +45,7 @@ def login_view(request):
                 messages.success(request, f"¡Bienvenido, {usuario.nombres}! 👋")
                 
                 if usuario.rol.nombre_rol == "Administrador":
-                    return redirect("inicio_admin")
+                    return redirect("admin_dashboard")
 
                 elif usuario.rol.nombre_rol == "Cliente" or usuario.rol.nombre_rol == "Vendedor":
                     # Ambos roles van al inicio del cliente para ver el catálogo
@@ -62,24 +63,11 @@ def login_view(request):
     return render(request, "login.html")
 
 @never_cache
-def inicio_admin(request):
-
-    if "usuario_id" not in request.session:
-        return redirect("login")
-
-    if request.session.get("usuario_rol") != "Administrador":
-        return redirect("login")
-
-    nombre = request.session.get("usuario_nombre")
-
-    return render(request, "admin.html", {"nombre": nombre})
-
-@never_cache
 def landing(request):
 
     # Si el usuario ya está logueado y es Admin, mandarlo a su panel de una
     if request.session.get("usuario_rol") == "Administrador":
-        return redirect("inicio_admin")
+        return redirect("admin_dashboard")
 
     nombre = request.session.get("usuario_nombre")
     rol = request.session.get("usuario_rol")
@@ -87,6 +75,8 @@ def landing(request):
     
     # Calculamos el carrito para Clientes o usuarios no logueados (Anónimos)
     cart_count = 0
+    notifs = []
+    unread_count = 0
     if rol != "Vendedor":
         carrito = request.session.get('carrito', {})
         if isinstance(carrito, dict):
@@ -101,6 +91,9 @@ def landing(request):
             usuario_id=usuario_id,
             estado__estado_pedido='PENDIENTE'
         ).count()
+        all_notifs = Notificacion.objects.filter(usuario_id=usuario_id)
+        unread_count = all_notifs.filter(leida=False).count()
+        notifs = all_notifs.order_by('-fecha')[:15]
 
     # Obtenemos uniformes de locales que estén activos
     prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
@@ -111,6 +104,8 @@ def landing(request):
         "prendas": prendas_qs,
         "cart_count": cart_count,
         "pedidos_pendientes_count": pedidos_pendientes_count,
+        "notificaciones": notifs,
+        "notifs_unread": unread_count,
     })
     
 
@@ -124,7 +119,7 @@ def inicio_cliente(request):
     
     # Si un Admin intenta entrar aquí (inicio de cliente), lo mandamos a su panel
     if rol == "Administrador":
-        return redirect("inicio_admin")
+        return redirect("admin_dashboard")
 
     if str(rol) not in ["Cliente", "Vendedor"]:
         return redirect("login")
@@ -150,6 +145,10 @@ def inicio_cliente(request):
         usuario_id=usuario_id,
         estado__estado_pedido='PENDIENTE'
     ).count()
+    
+    all_notifs = Notificacion.objects.filter(usuario_id=usuario_id)
+    unread_count = all_notifs.filter(leida=False).count()
+    notifs = all_notifs.order_by('-fecha')[:10]
 
     return render(request, "inicio_cliente.html", {
         "nombre": nombre,
@@ -157,6 +156,8 @@ def inicio_cliente(request):
         "prendas": prendas_qs,
         "cart_count": cart_count,
         "pedidos_pendientes_count": pedidos_pendientes_count,
+        "notificaciones": notifs,
+        "notifs_unread": unread_count,
     })
 
 def inicio_vendedor(request):
@@ -507,7 +508,17 @@ def editar_perfil(request):
             messages.success(request, "Perfil actualizado correctamente")
             return redirect("editar_perfil")
 
-    return render(request, "editar_perfil.html", {"usuario": usuario, "es_social": es_social})
+    # 🔔 Cargar notificaciones para que aparezcan en el perfil
+    all_notifs = Notificacion.objects.filter(usuario_id=usuario_id)
+    unread_count = all_notifs.filter(leida=False).count()
+    notifs = all_notifs.order_by('-fecha')[:10]
+
+    return render(request, "editar_perfil.html", {
+        "usuario": usuario, 
+        "es_social": es_social,
+        "notificaciones": notifs,
+        "notifs_unread": unread_count
+    })
 
 @never_cache
 def informacion(request):

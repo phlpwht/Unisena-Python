@@ -10,6 +10,8 @@
     <style>
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
+        .modal-active { display: flex !important; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="bg-[#f8fafc] p-4 md:p-8 font-sans">
@@ -48,19 +50,26 @@
             <div class="bg-gray-800 p-8 rounded-[2.5rem] shadow-xl text-white flex flex-col justify-center print:bg-white print:text-black print:border print:border-gray-200">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 text-center">Gestionar Estado</p>
                 
-                <form action="{% url 'detalle_pedido_vendedor' local.IdLocal pedido.idPedido %}" method="POST" class="space-y-3 no-print">
+                {% if fue_admin %}
+                <div class="bg-rose-500/20 border border-rose-500/30 p-4 rounded-2xl text-center">
+                    <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest leading-relaxed">Pedido cancelado por la administración. No se permiten cambios.</p>
+                </div>
+                {% else %}
+                <form id="statusForm" action="{% url 'detalle_pedido_vendedor' local.IdLocal pedido.idPedido %}" method="POST" class="space-y-3 no-print">
                     {% csrf_token %}
-                    <select name="nuevo_estado" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#125f58]">
+                    <select name="nuevo_estado" id="statusSelect" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#125f58]">
                         {% for val, label in estados_pedido %}
                         <option value="{{ val }}" class="text-gray-800" {% if pedido.estado.estado_pedido|upper == val|upper %}selected{% endif %}>
                             {{ label }}
                         </option>
                         {% endfor %}
                     </select>
-                    <button type="submit" class="w-full bg-[#125f58] hover:bg-[#0d4742] text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-lg">
+                    <button type="button" onclick="validateStatusChange()" class="w-full bg-[#125f58] hover:bg-[#0d4742] text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-lg">
                         Actualizar
                     </button>
                 </form>
+                {% endif %}
+
                 <div class="hidden print:block text-center font-black uppercase text-xl border-2 border-black p-2 rounded-xl">
                     {{ pedido.estado.estado_pedido }}
                 </div>
@@ -134,5 +143,68 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL DE MOTIVO DE CANCELACIÓN (VENDEDOR) -->
+    <div id="cancelModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="bi bi-x-circle-fill text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">Motivo de Cancelación</h3>
+                <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">
+                    Por favor, explica por qué vas a cancelar este pedido. Esta información se enviará al cliente.
+                </p>
+            </div>
+            <div class="bg-gray-50/50 p-6">
+                <form id="cancelReasonForm" method="POST" action="{% url 'detalle_pedido_vendedor' local.IdLocal pedido.idPedido %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="nuevo_estado" value="CANCELADO">
+                    <div class="mb-6">
+                        <textarea name="motivo" id="motivoText" required maxlength="150" 
+                            class="w-full p-4 bg-white rounded-2xl border-2 border-transparent focus:border-rose-500/20 outline-none text-xs font-bold text-gray-600 resize-none shadow-sm" 
+                            rows="4" placeholder="Escribe el motivo aquí..."></textarea>
+                        <p class="text-[9px] text-gray-400 mt-2 ml-2 font-bold uppercase tracking-widest">Máximo 150 caracteres</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeCancelModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Regresar</button>
+                        <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">
+                            Confirmar Cancelación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function validateStatusChange() {
+            const select = document.getElementById('statusSelect');
+            const form = document.getElementById('statusForm');
+            
+            if (select.value === 'CANCELADO') {
+                openCancelModal();
+            } else {
+                form.submit();
+            }
+        }
+
+        function openCancelModal() {
+            document.getElementById('cancelModal').classList.add('modal-active');
+        }
+
+        function closeCancelModal() {
+            document.getElementById('cancelModal').classList.remove('modal-active');
+            // Restaurar el selector al valor actual del pedido
+            const select = document.getElementById('statusSelect');
+            const currentStatus = "{{ pedido.estado.estado_pedido|escapejs }}";
+            for(let i=0; i<select.options.length; i++) {
+                if(select.options[i].value === currentStatus) {
+                    select.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    </script>
 </body>
 </html>

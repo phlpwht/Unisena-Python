@@ -14,7 +14,6 @@ urlpatterns = [
 
     # 🔒 PROTEGIDAS
     path('inicio-cliente/', views.inicio_cliente, name='inicio_cliente'),
-    path('inicio-admin/', views.inicio_admin, name='inicio_admin'),
     path('inicio-vendedor/', views.inicio_vendedor, name='inicio_vendedor'),
 
     path('perfil/editar/', views.editar_perfil, name='editar_perfil'),

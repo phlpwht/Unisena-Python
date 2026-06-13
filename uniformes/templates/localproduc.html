@@ -63,6 +63,13 @@
         <div class="inline-block mt-4 bg-white/10 backdrop-blur px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest">
             Horario: {{ local.Horaapertura|time:"H:i" }} - {{ local.HoraCierre|time:"H:i" }}
         </div>
+        {% if local.Numero %}
+        <div class="flex items-center gap-2 mt-4 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl w-fit mx-auto shadow-sm">
+            <i class="bi bi-whatsapp"></i>
+            <span class="text-xs font-black uppercase tracking-tighter">Contacto: {{ local.Numero }}</span>
+        </div>
+        {% endif %}
+
     </header>
 
     <main class="max-w-7xl mx-auto px-6 py-10">

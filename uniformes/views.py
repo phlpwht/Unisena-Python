@@ -14,6 +14,7 @@ from django.core.files import File
 from django.db.models import OuterRef, Subquery
 from inventario.models import MovimientoInventario
 from .models import CalificacionPedido
+from locales.models import Notificacion
 
 def crear_prenda(request, id_local):
     if "usuario_id" not in request.session:
@@ -532,6 +533,8 @@ def catalogo_prendas(request):
         else:
             cart_count = len(carrito) if isinstance(carrito, list) else 0
 
+    notifs = Notificacion.objects.filter(usuario_id=usuario_id).order_by('-fecha')[:10] if usuario_id else []
+
     return render(request, "cardsuni.html", {
         "nombre": nombre,
         "rol": rol,
@@ -550,6 +553,7 @@ def catalogo_prendas(request):
         "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
         "cart_count": cart_count,
         "pedidos_pendientes_count": pedidos_pendientes_count,
+        "notificaciones": notifs,
     })
 
 def detalle_prenda(request, id_prenda):
@@ -635,6 +639,9 @@ def ver_carrito(request):
     if request.session.get("usuario_rol") == "Vendedor":
         messages.error(request, "Los vendedores no pueden gestionar carritos.")
         return redirect('landing')
+    
+    usuario_id = request.session.get("usuario_id")
+    from locales.models import Notificacion
 
     carrito = request.session.get('carrito', {})
     if not isinstance(carrito, dict): 
@@ -642,6 +649,23 @@ def ver_carrito(request):
         prendas_ids = carrito
         carrito = {str(pid): 1 for pid in prendas_ids}
         request.session['carrito'] = carrito
+
+    # Limpieza proactiva de productos agotados en el carrito
+    items_removidos = []
+    for pid, cant in list(carrito.items()):
+        p = Prendas.objects.filter(idPrenda=pid).first()
+        if not p or p.stock < 1 or not p.activo:
+            items_removidos.append(pid)
+            if usuario_id and p:
+                Notificacion.objects.create(
+                    usuario_id=usuario_id,
+                    mensaje=f"El uniforme '{p.nombre}' fue removido de tu carrito por falta de unidades disponibles.",
+                    tipo='alerta'
+                )
+            del carrito[pid]
+    
+    if items_removidos:
+        request.session.modified = True
 
     items = []
     total_general = 0
@@ -710,6 +734,13 @@ def procesar_pago(request):
             if not prenda.activo or prenda.stock < cant:
                 messages.error(request, f"Lo sentimos, solo quedan {prenda.stock} unidades de {prenda.nombre} 😔")
                 return redirect('ver_carrito')
+            
+            # REGLA: No se puede agotar el stock si ya existen otros pedidos pendientes por el mismo uniforme
+            if (prenda.stock - cant == 0):
+                otros_pedidos = DetallePedido.objects.filter(prenda=prenda, pedido__estado__estado_pedido__in=['PENDIENTE', 'En Proceso']).exists()
+                if otros_pedidos:
+                    messages.error(request, f"No puedes llevarte todo el stock de {prenda.nombre}. Existen otros pedidos pendientes que dependen de este inventario.")
+                    return redirect('ver_carrito')
 
             subtotal = prenda.precio * cant
             total_p += subtotal

@@ -2,17 +2,19 @@ import re
 from uniformes.models import Prendas, Pedido, DetallePedido, EstadoPedido
 
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Local
+from .models import Local, Notificacion
 from usuario.models import Usuario  #ajusta el import según tu app
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.hashers import check_password
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.db import models
+from django.db.models import OuterRef, Subquery
 from django.utils.timezone import now
 from inventario.models import MovimientoInventario
 from allauth.socialaccount.models import SocialAccount
+from django.views.decorators.cache import never_cache
 import pandas as pd
 
 def lista_locales(request):
@@ -38,10 +40,17 @@ def lista_locales(request):
     total_propios = Local.objects.filter(IdUsuario_id=usuario_id).count()
     puede_crear = total_propios < 3 and usuario_rol == "Vendedor"
 
+    # 🔔 Notificaciones para el Vendedor (o Admin)
+    all_notifs = Notificacion.objects.filter(usuario_id=usuario_id)
+    unread_count = all_notifs.filter(leida=False).count()
+    notifs = all_notifs.order_by('-fecha')[:10]
+
     return render(request, 'lista.html', { #AQUÍ PASAMOS LOS LOCALES FILTRADOS AL TEMPLATE
         'locales': locales,
         'modo': modo,
-        'puede_crear': puede_crear
+        'puede_crear': puede_crear,
+        'notificaciones': notifs,
+        'notifs_unread': unread_count,
     })
 
 
@@ -57,12 +66,22 @@ def crear_local(request):
         nombre_local = request.POST.get('Nombre_local', '').strip()
         direccion = request.POST.get('Ubicacion_direccion', '').strip()
         descripcion = request.POST.get('Descripcion', '').strip()
+        numero = request.POST.get('Numero', '').strip()
 
         errores = []
         if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre_local):
             errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
-         
+
+        if not numero or numero.strip() == "":
+            errores.append("❌ El número de contacto es obligatorio y no puede estar vacío")
+        elif not numero.isdigit():
+            errores.append("❌ El número solo debe contener dígitos (0-9)")
+        elif len(numero) != 10:
+            errores.append("❌ El número de contacto debe tener exactamente 10 dígitos")
+        elif Local.objects.filter(Numero=numero).exists():
+            errores.append(f"❌ El número '{numero}' ya está registrado por otro local")
+
         if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
         if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
 
@@ -82,7 +101,8 @@ def crear_local(request):
             Ubicacion_direccion=direccion,
             Imagen=request.FILES.get('Imagen'),
             Horaapertura = request.POST.get('Horaapertura') or None,
-            HoraCierre = request.POST.get('HoraCierre') or None
+            HoraCierre = request.POST.get('HoraCierre') or None,
+            Numero=numero
         )
 
         messages.success(request, "Local creado correctamente 🎉")
@@ -99,6 +119,7 @@ def editar_local(request, id):
         nombre_local = request.POST.get('Nombre_local', '').strip()
         direccion = request.POST.get('Ubicacion_direccion', '').strip()
         descripcion = request.POST.get('Descripcion', '').strip()
+        numero = request.POST.get('Numero', '').strip()
 
         errores = []
         if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
@@ -106,6 +127,16 @@ def editar_local(request, id):
             errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
         if Local.objects.filter(IdUsuario_id=usuario_id, Nombre_local__iexact=nombre_local).exclude(IdLocal=id).exists():
             errores.append(f"❌ Ya tienes otro local llamado '{nombre_local}'")
+        
+        if not numero or numero.strip() == "":
+            errores.append("❌ El número de contacto es obligatorio y no puede estar vacío")
+        elif not numero.isdigit():
+            errores.append("❌ El número solo debe contener dígitos (0-9)")
+        elif len(numero) != 10:
+            errores.append("❌ El número de contacto debe tener exactamente 10 dígitos")
+        elif Local.objects.filter(Numero=numero).exclude(IdLocal=id).exists():
+            errores.append(f"❌ El número '{numero}' ya está en uso por otro local")
+
         if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
         if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
 
@@ -117,12 +148,14 @@ def editar_local(request, id):
             local.Nombre_local = nombre_local
             local.Ubicacion_direccion = direccion
             local.Descripcion = descripcion
+            local.Numero = numero
 
             return render(request, 'formulario.html', {'local': local})
 
         local.Nombre_local = nombre_local
         local.Descripcion = descripcion
         local.Ubicacion_direccion = direccion
+        local.Numero = numero
         if request.FILES.get('Imagen'):
             local.Imagen = request.FILES.get('Imagen')
         hora_apertura = request.POST.get('Horaapertura')
@@ -213,9 +246,17 @@ def dashboard_vendedor(request):
     usuario_id = request.session.get("usuario_id")
     total_locales = Local.objects.filter(IdUsuario_id=usuario_id).count()
     puede_crear = total_locales < 3
+
+    # 🔔 Notificaciones para el Vendedor
+    all_notifs = Notificacion.objects.filter(usuario_id=usuario_id)
+    unread_count = all_notifs.filter(leida=False).count()
+    notifs = all_notifs.order_by('-fecha')[:10]
+
     return render(request, 'dashboard.html', {
         'total_locales': total_locales,
-        'puede_crear': puede_crear
+        'puede_crear': puede_crear,
+        'notificaciones': notifs,
+        'notifs_unread': unread_count,
     })
 
 
@@ -570,12 +611,42 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
     if not DetallePedido.objects.filter(pedido=pedido, prenda__idLocal=local).exists():
         messages.error(request, "No tienes permiso para gestionar este pedido.")
         return redirect('landing')
+
+    # 🛡️ Determinar si fue cancelado por el Admin para bloquear el HTML
+    fue_admin = False
+    if pedido.estado.estado_pedido == 'CANCELADO':
+        fue_admin = Notificacion.objects.filter(
+            mensaje__icontains=f"#{pedido.idPedido}",
+            tipo='error'
+        ).filter(mensaje__icontains="administración").exists()
     
     if request.method == "POST":
+        if fue_admin:
+            messages.error(request, "Este pedido fue cancelado por el administrador y no puede ser modificado.")
+            return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
+
         nuevo_estado_val = request.POST.get("nuevo_estado")
         if nuevo_estado_val:
             estado_anterior = pedido.estado.estado_pedido
             nuevo_estado_nombre = nuevo_estado_val.strip()
+
+            # 🚨 Lógica para Cancelación por parte del Vendedor
+            if nuevo_estado_nombre == 'CANCELADO':
+                motivo = request.POST.get('motivo', '').strip()
+                if not motivo:
+                    messages.error(request, "❌ Debes proporcionar un motivo para cancelar el pedido.")
+                    return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
+                if len(motivo) > 150:
+                    messages.error(request, "❌ El motivo no puede exceder los 150 caracteres.")
+                    return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
+                
+                # Notificar al cliente
+                Notificacion.objects.create(
+                    usuario=pedido.usuario,
+                    mensaje=f"Tu pedido #{pedido.idPedido} ha sido cancelado por el vendedor del local {local.Nombre_local}.",
+                    motivo=motivo,
+                    tipo='error'
+                )
 
             # 🚨 Lógica de Inventario: Solo si cambia a COMPLETADO y no lo estaba antes
             if nuevo_estado_nombre == 'COMPLETADO' and estado_anterior != 'COMPLETADO':
@@ -627,7 +698,8 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
         "total_venta_local": total_venta,
         "total_abono_local": total_abono,
         "saldo_pendiente_local": saldo_pendiente,
-        "estados_pedido": EstadoPedido.ESTADO_CHOICES
+        "estados_pedido": EstadoPedido.ESTADO_CHOICES,
+        "fue_admin": fue_admin
     })
 
 def exportar_ventas_excel(request, id_local):
@@ -750,3 +822,14 @@ def previa_excel_local(request, id_local):
         "p_fecha_inicio": p_fecha_inicio,
         "p_fecha_fin": p_fecha_fin,
     })
+
+@never_cache
+def marcar_notificacion_leida(request, id_notif):
+    """Marca una notificación como leída vía AJAX"""
+    if "usuario_id" not in request.session:
+        return JsonResponse({'status': 'error'}, status=403)
+    
+    notif = get_object_or_404(Notificacion, id=id_notif, usuario_id=request.session.get("usuario_id"))
+    notif.leida = True
+    notif.save()
+    return JsonResponse({'status': 'success'})

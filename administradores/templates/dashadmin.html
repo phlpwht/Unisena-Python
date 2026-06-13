@@ -1,0 +1,616 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | UniSena</title>
+    <link rel="icon" type="image/png" href="{% static 'img/unison.png' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; }
+        .sidebar-item { @apply flex items-center justify-between px-4 py-3 rounded-xl text-white/50 font-bold text-[11px] uppercase tracking-wider transition-all duration-300 hover:bg-white/10 hover:text-white group; }
+        .sidebar-active { @apply bg-white/15 text-white shadow-lg shadow-black/10 border-l-4 border-yellow-400; }
+        .stat-card { @apply bg-white p-8 rounded-[2.5rem] shadow-xl shadow-gray-200/40 border border-gray-50 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#125f58]/10 cursor-pointer; }
+        .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #0d4742; border-radius: 10px; }
+        .modal-active { display: flex !important; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @media (max-width: 1024px) {
+            .sidebar-closed { transform: translateX(-100%); }
+            .sidebar-open { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="flex flex-col lg:flex-row min-h-screen overflow-x-hidden">
+
+    <!-- HEADER MÓVIL -->
+    <div class="lg:hidden bg-[#125f58] p-4 flex justify-between items-center sticky top-0 z-[60] shadow-xl">
+        <div class="flex items-center gap-3">
+            <img src="{% static 'img/logo.jpeg' %}" class="w-8 h-8 rounded-lg border border-white/20">
+            <span class="text-white font-black italic tracking-tighter">UNISENA</span>
+        </div>
+        <button onclick="toggleSidebar()" class="text-white text-2xl p-2 active:scale-90 transition-transform">
+            <i class="bi bi-list"></i>
+        </button>
+    </div>
+
+    <!-- SIDEBAR PREMIUM -->
+    <aside id="sidebar" class="sidebar-closed lg:sidebar-open fixed lg:sticky top-0 left-0 w-72 bg-[#125f58] flex flex-col h-screen shadow-[10px_0_40px_rgba(0,0,0,0.1)] z-50 border-r border-white/5 transition-transform duration-300">
+        <!-- Botón cerrar (Solo móvil) -->
+        <button onclick="toggleSidebar()" class="lg:hidden absolute top-6 right-6 text-white/50 hover:text-white text-2xl">
+            <i class="bi bi-x-lg"></i>
+        </button>
+
+        <!-- Logo Area -->
+        <a href="?" class="px-8 py-10 flex items-center gap-4 hover:opacity-80 transition-opacity">
+            <div class="relative">
+                <img src="{% static 'img/logo.jpeg' %}" class="w-12 h-12 rounded-2xl border-2 border-white/20 p-0.5 shadow-xl">
+                <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-4 border-[#125f58]"></div>
+            </div>
+            <div>
+                <h2 class="text-white text-xl font-black tracking-tighter leading-none italic">UNISENA</h2>
+                <span class="text-[9px] font-black text-white/40 uppercase tracking-[0.3em]">Administrator</span>
+            </div>
+        </a>
+
+        <!-- System Status Card -->
+        <div class="mx-6 mb-8 p-4 glass-card rounded-2xl shadow-inner">
+            <div class="flex items-center gap-3">
+                <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <div>
+                    <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Sistema Activo</p>
+                    <p class="text-[9px] text-white/30 font-bold uppercase">CSF - Sede Bogotá</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Groups -->
+        <div class="flex-1 px-4 space-y-8 overflow-y-auto">
+            <!-- Group: Navegación -->
+            <div>
+                <p class="px-4 mb-4 text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Navegación</p>
+                <nav class="space-y-1">
+                    <a href="?section=usuarios" class="sidebar-item {% if section == 'usuarios' %}sidebar-active{% endif %}">
+                        <span class="flex items-center gap-4">
+                            <i class="bi bi-people text-lg group-hover:scale-110 transition-transform"></i>
+                            <span>Usuarios</span>
+                        </span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Separator -->
+            <div class="h-px bg-white/5 mx-4"></div>
+
+            <!-- Group: Administración -->
+            <div>
+                <p class="px-4 mb-4 text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Administración</p>
+                <nav class="space-y-1">
+                    <a href="?section=locales" class="sidebar-item {% if section == 'locales' %}sidebar-active{% endif %}">
+                        <span class="flex items-center gap-4">
+                            <i class="bi bi-shop text-lg group-hover:scale-110 transition-transform"></i>
+                            <span>Locales</span>
+                        </span>
+                        <span class="flex gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        </span>
+                    </a>
+                    <a href="?section=pedidos" class="sidebar-item {% if section == 'pedidos' %}sidebar-active{% endif %}">
+                        <span class="flex items-center gap-4">
+                            <i class="bi bi-cart-check text-lg group-hover:scale-110 transition-transform"></i>
+                            <span>Pedidos</span>
+                        </span>
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Premium Logout Card -->
+        <div class="p-6 border-t border-white/5 bg-[#0d4742]/50">
+            <a href="{% url 'logout' %}" class="group flex items-center gap-4 p-4 bg-rose-500/10 rounded-2xl border border-rose-500/20 transition-all duration-300 hover:bg-rose-500 hover:shadow-lg hover:shadow-rose-500/30 active:scale-95">
+                <div class="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center text-rose-400 group-hover:bg-white group-hover:text-rose-500 transition-colors">
+                    <i class="bi bi-box-arrow-left text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-black text-rose-400 group-hover:text-white uppercase tracking-widest">Cerrar Sesión</p>
+                    <p class="text-[9px] text-rose-400/50 group-hover:text-white/80 font-bold uppercase tracking-tighter">Finalizar Turno</p>
+                </div>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col">
+        
+        <!-- TOP BAR -->
+        <header class="bg-white border-b border-gray-100 px-6 lg:px-10 py-6 flex justify-between items-center sticky top-0 z-40">
+            <div>
+                <h1 class="text-lg lg:text-xl font-black text-gray-800 uppercase tracking-tighter italic">Panel de Control</h1>
+                <p class="text-gray-400 text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mt-1">Gestión general UniSena</p>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div class="text-right hidden sm:block">
+                    <p class="text-[10px] font-black text-[#125f58] uppercase tracking-widest leading-none">Hola,</p>
+                    <p class="text-sm font-black text-gray-800 tracking-tight">{{ nombre }}</p>
+                </div>
+                <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-[#125f58] shadow-inner">
+                    <i class="bi bi-person-badge-fill text-xl"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD CONTENT -->
+        <main class="p-6 lg:p-10 space-y-10">
+
+            <!-- Notificaciones de acciones -->
+            {% if messages %}
+            <div id="toast-container" class="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                {% for message in messages %}
+                <div class="toast-message p-4 rounded-3xl {% if message.tags == 'error' %}bg-rose-50 text-rose-600 border border-rose-100{% else %}bg-emerald-50 text-emerald-600 border border-emerald-100{% endif %} font-bold text-[11px] shadow-sm flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 uppercase tracking-wider">
+                        <i class="bi {% if message.tags == 'error' %}bi-exclamation-circle-fill{% else %}bi-check-circle-fill{% endif %} text-lg"></i>
+                        {{ message|safe }}
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="opacity-50 hover:opacity-100 transition-opacity"><i class="bi bi-x-lg"></i></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if section == 'usuarios' %}
+            <!-- SECCIÓN DE GESTIÓN DE USUARIOS -->
+            <section class="bg-white rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50 overflow-hidden">
+                <div class="p-8 lg:p-12 border-b border-gray-100 bg-gray-50/30 flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div class="text-center sm:text-left">
+                        <h2 class="text-2xl lg:text-3xl font-black text-gray-800 tracking-tighter uppercase italic">Control de Usuarios</h2>
+                        <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Gestión de accesos e identidades</p>
+                    </div>
+                    <!-- BARRA DE FILTROS -->
+                    <form method="GET" class="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[2rem] shadow-inner border border-gray-100">
+                        <input type="hidden" name="section" value="usuarios">
+                        <div class="relative">
+                            <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                            <input type="text" name="q_search" value="{{ q_search }}" placeholder="Nombre o ID..." 
+                                class="pl-10 pr-4 py-2 bg-gray-50 rounded-xl text-[11px] font-bold focus:bg-white outline-none border border-transparent focus:border-[#125f58]/20 transition-all w-48">
+                        </div>
+                        <select name="f_tipo_id" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
+                            <option value="">Tipo ID</option>
+                            {% for choice_value, choice_label in tipo_identificacion_choices %}
+                                <option value="{{ choice_value }}" {% if f_tipo_id_sel == choice_value %}selected{% endif %}>{{ choice_label }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="f_rol" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
+                            <option value="">Todos los Roles</option>
+                            {% for r in roles %}
+                            <option value="{{ r.id }}" {% if f_rol_sel == r.id|stringformat:"s" %}selected{% endif %}>{{ r.nombre_rol }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="bg-[#125f58] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition-colors shadow-lg shadow-[#125f58]/20">Filtrar</button>
+                        {% if q_search or f_rol_sel or f_tipo_id_sel %}
+                            <a href="?section=usuarios" class="text-rose-400 text-lg hover:rotate-90 transition-transform"><i class="bi bi-x-circle-fill"></i></a>
+                        {% endif %}
+                    </form>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/50">
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Perfil / Correo</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Identificación</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Rol / Jerarquía</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Gestión</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {% for u in usuarios %}
+                            <tr class="group hover:bg-gray-50/50 transition-all duration-300">
+                                <td class="px-8 py-6">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 rounded-2xl bg-[#125f58]/5 flex items-center justify-center text-[#125f58] font-black text-sm shadow-inner group-hover:bg-[#125f58] group-hover:text-white transition-all duration-500">
+                                            {{ u.nombres|slice:":1" }}{{ u.apellidos|slice:":1" }}
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-black text-gray-800 tracking-tight">{{ u.nombres }} {{ u.apellidos }}</p>
+                                            <p class="text-[11px] text-gray-400 font-bold tracking-tight">{{ u.correo }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <p class="text-[10px] font-black text-gray-300 uppercase tracking-widest leading-none mb-1">{{ u.tipo_identificacion }}</p>
+                                    <p class="text-xs font-black text-gray-600">{{ u.num_identificacion }}</p>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <div class="relative max-w-[150px]">
+                                        <select 
+                                            onchange="openRoleModal('{{ u.id }}', '{{ u.nombres }} {{ u.apellidos }}', this.value, this.options[this.selectedIndex].text, '{{ u.rol_id }}', this)" 
+                                            class="appearance-none w-full bg-gray-100 border-2 border-transparent px-4 py-2 rounded-xl text-[10px] font-black text-[#125f58] uppercase tracking-widest focus:bg-white focus:border-[#125f58]/20 outline-none cursor-pointer transition-all role-select"
+                                            data-original-val="{{ u.rol_id }}">
+                                            {% for rol in roles %}
+                                            <option value="{{ rol.id }}" {% if u.rol_id == rol.id %}selected{% endif %}>{{ rol.nombre_rol }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <div class="flex justify-center">
+                                        <button type="button" 
+                                            onclick="openDeleteModal('{{ u.id }}', '{{ u.nombres }} {{ u.apellidos }}')"
+                                            class="w-10 h-10 rounded-xl flex items-center justify-center text-rose-400 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-500/30 transition-all active:scale-90">
+                                            <i class="bi bi-trash3-fill text-lg"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            {% elif section == 'locales' %}
+            <!-- SECCIÓN DE GESTIÓN DE LOCALES -->
+            <section class="bg-white rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50 overflow-hidden">
+                <div class="p-8 lg:p-12 border-b border-gray-100 bg-gray-50/30 flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div class="text-center sm:text-left">
+                        <h2 class="text-2xl lg:text-3xl font-black text-gray-800 tracking-tighter uppercase italic">Control de Locales</h2>
+                        <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Supervisión de establecimientos</p>
+                    </div>
+                    <form method="GET" class="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[2rem] shadow-inner border border-gray-100">
+                        <input type="hidden" name="section" value="locales">
+                        <input type="text" name="q_search" value="{{ q_search }}" placeholder="Nombre o dueño..." 
+                            class="pl-6 pr-4 py-2 bg-gray-50 rounded-xl text-[11px] font-bold focus:bg-white outline-none border border-transparent focus:border-[#125f58]/20 transition-all w-48">
+                        <select name="f_status" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
+                            <option value="">Estado</option>
+                            <option value="1" {% if f_status_sel == '1' %}selected{% endif %}>Activos</option>
+                            <option value="0" {% if f_status_sel == '0' %}selected{% endif %}>Inactivos</option>
+                        </select>
+                        <button type="submit" class="bg-[#125f58] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition-colors shadow-lg shadow-[#125f58]/20">Buscar</button>
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/50">
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Establecimiento</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Responsable</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Estado</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Gestión</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {% for l in locales %}
+                            <tr class="group hover:bg-gray-50/50 transition-all duration-300">
+                                <td class="px-8 py-6">
+                                    <p class="text-sm font-black text-gray-800 tracking-tight">{{ l.Nombre_local }}</p>
+                                    <p class="text-[10px] text-gray-400 font-bold uppercase">{{ l.Ubicacion_direccion }}</p>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <p class="text-xs font-black text-gray-600">{{ l.IdUsuario.nombres }} {{ l.IdUsuario.apellidos }}</p>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <span class="flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest 
+                                        {% if l.EstaActivo %}bg-emerald-100 text-emerald-600{% else %}bg-yellow-100 text-yellow-600{% endif %}">
+                                        <i class="bi {% if l.EstaActivo %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %} text-xs"></i>
+                                        {{ l.EstaActivo|yesno:"Activo,Inactivo" }}
+                                    </span>
+                                </td>
+                                <td class="px-8 py-6 text-center">
+                                    <button onclick="openDeleteLocalModal('{{ l.IdLocal }}', '{{ l.Nombre_local }}')" class="text-rose-400 hover:text-rose-600 transition-colors">
+                                        <i class="bi bi-trash3 text-lg"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            {% elif section == 'pedidos' %}
+            <!-- SECCIÓN DE GESTIÓN DE PEDIDOS -->
+            <section class="bg-white rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50 overflow-hidden">
+                <div class="p-8 lg:p-12 border-b border-gray-100 bg-gray-50/30 flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div>
+                        <h2 class="text-2xl lg:text-3xl font-black text-gray-800 tracking-tighter uppercase italic">Monitoreo de Pedidos</h2>
+                        <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Historial global de ventas</p>
+                    </div>
+                    <form method="GET" class="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[2rem] shadow-inner border border-gray-100">
+                        <input type="hidden" name="section" value="pedidos">
+                        <input type="text" name="q_search" value="{{ q_search }}" placeholder="ID, Cliente o Local..." 
+                            class="pl-6 pr-4 py-2 bg-gray-50 rounded-xl text-[11px] font-bold focus:bg-white outline-none border border-transparent focus:border-[#125f58]/20 transition-all w-48">
+                        <select name="f_estado" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
+                            <option value="">Estado</option>
+                            {% for val, lab in estados_pedido %}
+                            <option value="{{ val }}" {% if f_estado_sel == val %}selected{% endif %}>{{ lab }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="bg-[#125f58] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition-colors shadow-lg shadow-[#125f58]/20">Filtrar</button>
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/50">
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]"># Orden</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Cliente</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Detalle del Pedido</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Total</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Estado</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {% for p in pedidos %}
+                            <tr class="group hover:bg-gray-50/50 transition-all duration-300">
+                                <td class="px-8 py-6 font-black text-gray-800 italic">#{{ p.idPedido }}</td>
+                                <td class="px-8 py-6">
+                                    <p class="text-xs font-black text-gray-700">{{ p.usuario.nombres }} {{ p.usuario.apellidos }}</p>
+                                    <p class="text-[9px] text-gray-400">{{ p.fecha_pedido|date:"d/m/Y H:i" }}</p>
+                                </td>
+                                <td class="px-8 py-6">
+                                    {% for det in p.detallepedido_set.all %}
+                                    <div class="mb-1 last:mb-0">
+                                        <p class="text-[10px] font-black text-[#125f58] uppercase">{{ det.prenda.idLocal.Nombre_local }}</p>
+                                        <p class="text-[11px] text-gray-600 font-bold">{{ det.cantidad }}x {{ det.prenda.nombre }} ({{ det.talla }})</p>
+                                    </div>
+                                    {% endfor %}
+                                </td>
+                                <td class="px-8 py-6">
+                                    <p class="text-xs font-black text-gray-800 tracking-tight">
+                                        ${{ p.precio_total|default:"0" }}
+                                    </p>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <div class="flex flex-col gap-1">
+                                        <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase {% if p.estado.estado_pedido == 'CANCELADO' %}bg-rose-100 text-rose-600{% else %}bg-gray-100 text-gray-500{% endif %}">
+                                            {{ p.estado.estado_pedido }}
+                                        </span>
+                                        {% if p.estado.estado_pedido == 'CANCELADO' and p.motivo_cancelacion %}
+                                            <p class="text-[9px] text-gray-400 italic font-medium leading-tight max-w-[120px]">Motivo: {{ p.motivo_cancelacion }}</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-center">
+                                    {% if p.estado.estado_pedido != 'CANCELADO' and p.estado.estado_pedido != 'COMPLETADO' %}
+                                    <button onclick="openOrderModal('{{ p.idPedido }}', 'CANCELADO')" class="text-rose-400 hover:scale-110 transition-transform">
+                                        <i class="bi bi-x-circle-fill text-xl"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            {% else %}
+            <!-- SECCIÓN DE BIENVENIDA -->
+            <section class="bg-white rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50 p-8 lg:p-14 text-center">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <div class="w-20 h-20 bg-[#125f58]/10 text-[#125f58] rounded-[2rem] flex items-center justify-center mx-auto mb-2">
+                        <i class="bi bi-shield-check text-4xl"></i>
+                    </div>
+                    <h2 class="text-3xl lg:text-5xl font-black text-gray-800 tracking-tighter italic leading-tight">
+                        Bienvenido, Administrador.
+                    </h2>
+                    <p class="text-gray-500 text-base lg:text-xl font-medium leading-relaxed">
+                        Desde este panel podrás supervisar usuarios, gestionar locales, monitorear pedidos y consultar información estratégica del sistema UniSena.
+                    </p>
+                </div>
+            </section>
+            {% endif %}
+
+        </main>
+    </div>
+
+    <!-- MODAL DE ELIMINACIÓN PREMIUM -->
+    <div id="deleteModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="bi bi-exclamation-triangle-fill text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">¿Estás seguro?</h3>
+                <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">
+                    Estás a punto de eliminar a <span id="deleteUserName" class="text-gray-700 font-black"></span>. Esta acción puede afectar pedidos y locales vinculados.
+                </p>
+            </div>
+            <div class="bg-gray-50/50 p-6">
+                <form id="deleteForm" method="POST" class="w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="user_id" id="deleteUserId">
+                    <input type="hidden" name="accion" value="eliminar">
+                    <!-- CAMPO MOTIVO LOCAL (DEBE ESTAR DENTRO DEL FORM PARA ENVIARSE) -->
+                    <div id="motivoDeleteContainer" class="mt-2 mb-6 hidden text-left">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Explica el motivo (se enviará al dueño):</label>
+                        <textarea name="motivo" id="motivoDeleteText" class="w-full p-4 bg-gray-50 rounded-[1.5rem] border-2 border-transparent focus:border-[#125f58]/10 outline-none text-xs font-bold text-gray-600 resize-none" rows="3" placeholder="Escribe el motivo aquí..."></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeDeleteModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+                        <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">
+                            Sí, Eliminar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CAMBIO DE ROL -->
+    <div id="roleModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="bi bi-shield-shaded text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">¿Confirmar Cambio?</h3>
+                <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">
+                    Estás a punto de cambiar el rol de <span id="roleUserName" class="text-gray-700 font-black"></span> a <span id="newRoleName" class="text-[#125f58] font-black"></span>.
+                </p>
+            </div>
+            <div class="bg-gray-50/50 p-6">
+                <form id="roleForm" method="POST" class="w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="user_id" id="roleUserId">
+                    <input type="hidden" name="rol_id" id="roleNewId">
+                    <input type="hidden" name="accion" value="cambiar_rol">
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeRoleModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+                        <button type="submit" class="flex-1 py-3 bg-[#125f58] text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#125f58]/20 hover:bg-[#0d4742] transition-all active:scale-95">
+                            Confirmar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('sidebar-closed');
+            sidebar.classList.toggle('sidebar-open');
+        }
+
+        // Control de Modal Eliminar
+        function openDeleteModal(id, name) {
+            document.getElementById('deleteUserId').value = id;
+            document.getElementById('deleteUserName').innerText = name;
+            document.getElementById('deleteModal').classList.add('modal-active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('modal-active');
+            // Limpiar estado del modal para futuras aperturas
+            document.getElementById('motivoDeleteContainer').classList.add('hidden');
+            document.getElementById('motivoDeleteText').value = '';
+            document.getElementById('motivoDeleteText').removeAttribute('required');
+            
+            const form = document.getElementById('deleteForm');
+            form.querySelector('input[name="accion"]').value = 'eliminar';
+            document.getElementById('deleteUserId').name = 'user_id';
+        }
+
+        // Control de Modal Rol
+        let currentSelect = null;
+        function openRoleModal(id, userName, roleId, roleName, originalRolId, selectElement) {
+            document.getElementById('roleUserId').value = id;
+            document.getElementById('roleNewId').value = roleId;
+            document.getElementById('roleUserName').innerText = userName;
+            document.getElementById('newRoleName').innerText = roleName;
+            document.getElementById('roleModal').classList.add('modal-active');
+            
+            // Guardamos el select para resetearlo si cancela
+            currentSelect = selectElement;
+        }
+
+        function closeRoleModal() {
+            document.getElementById('roleModal').classList.remove('modal-active');
+            if (currentSelect) {
+                currentSelect.value = currentSelect.getAttribute('data-original-val');
+            }
+        }
+
+        // Auto-cierre de notificaciones con Contador (10 segundos para eliminar)
+        document.addEventListener('DOMContentLoaded', () => {
+            const toasts = document.querySelectorAll('.toast-message');
+            toasts.forEach(toast => {
+                const timerSpan = toast.querySelector('.countdown-timer');
+                
+                if (timerSpan) {
+                    // Mensajes de Deshacer: Mantienen el contador de 10 segundos
+                    let timeLeft = 10;
+                    const interval = setInterval(() => {
+                        timeLeft -= 1;
+                        if (timerSpan) timerSpan.innerText = `(${timeLeft}s)`;
+
+                        if (timeLeft <= 0) {
+                            clearInterval(interval);
+                            removeToast(toast);
+                        }
+                    }, 1000);
+
+                    const closeBtn = toast.querySelector('button');
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', () => clearInterval(interval));
+                    }
+                } else {
+                    // Mensajes normales: Desaparecen automáticamente en 3 segundos
+                    setTimeout(() => {
+                        removeToast(toast);
+                    }, 3000);
+                }
+            });
+        });
+
+        function removeToast(toast) {
+            if(toast && toast.parentElement) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                toast.style.transition = 'all 0.5s ease';
+                setTimeout(() => toast.remove(), 500);
+            }
+        }
+
+// Modal para cambiar estado de Pedido
+function openOrderModal(id, newState) {
+    document.getElementById('roleUserName').innerText = "Pedido #" + id;
+    document.getElementById('newRoleName').innerText = newState;
+
+    const form = document.getElementById('roleForm');
+    form.innerHTML = `
+        {% csrf_token %}
+        <input type="hidden" name="pedido_id" value="${id}">
+        <input type="hidden" name="nuevo_estado" value="${newState}">
+        <input type="hidden" name="accion" value="cancelar_pedido">
+        <div class="mb-5 text-left">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">
+                Motivo de la cancelación <span class="text-rose-500">*</span>
+            </label>
+            <textarea name="motivo" required maxlength="150" 
+                class="w-full p-4 bg-gray-50 rounded-[1.2rem] border-2 border-transparent focus:border-rose-500/20 focus:bg-white outline-none text-xs font-bold text-gray-700 resize-none transition-all shadow-inner" 
+                rows="3" placeholder="Ej: El producto no está disponible o el cliente lo solicitó..."></textarea>
+            <p class="text-[8px] text-gray-400 mt-1.5 ml-2 font-bold uppercase tracking-widest">Máximo 150 caracteres</p>
+        </div>
+        <div class="flex gap-3">
+            <button type="button" onclick="closeRoleModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
+                Cancelar
+            </button>
+            <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">
+                Confirmar
+            </button>
+        </div>
+    `;
+    document.getElementById('roleModal').classList.add('modal-active');
+}
+
+// Modal para eliminar local
+function openDeleteLocalModal(id, name) {
+    document.getElementById('deleteUserId').value = id;
+    document.getElementById('deleteUserName').innerText = name;
+    const form = document.getElementById('deleteForm');
+    form.querySelector('input[name="accion"]').value = 'eliminar_local';
+    form.querySelector('input[name="user_id"]').name = 'local_id';
+
+    // Mostrar motivo solo para locales
+    document.getElementById('motivoDeleteContainer').classList.remove('hidden');
+    document.getElementById('motivoDeleteText').setAttribute('required', 'true');
+
+    document.getElementById('deleteModal').classList.add('modal-active');
+}
+
+    </script>
+</body>
+</html>
