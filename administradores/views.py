@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.cache import never_cache
 from usuario.models import Usuario, Rol
-from uniformes.models import Pedido, EstadoPedido
+from uniformes.models import Pedido, EstadoPedido, Prendas
 from locales.models import Local
 from django.db.models import Q
 from django.db import transaction # Importar transaction
@@ -85,6 +85,13 @@ def dashadmin(request):
                 del request.session['last_deleted_local']
                 messages.success(request, "♻️ Local restaurado con éxito.")
                 return redirect(f"{reverse('admin_dashboard')}?section=locales")
+
+            prenda_data = request.session.get('last_deleted_prenda')
+            if prenda_data:
+                Prendas.objects.create(**prenda_data)
+                del request.session['last_deleted_prenda']
+                messages.success(request, "♻️ Uniforme restaurado con éxito.")
+                return redirect(f"{reverse('admin_dashboard')}?section=uniformes")
             return redirect(f"{reverse('admin_dashboard')}?section=usuarios")
 
         elif accion == "cambiar_rol":
@@ -161,6 +168,43 @@ def dashadmin(request):
                     messages.success(request, f"🗑️ Local <b>{nombre}</b> eliminado. ¿Deseas deshacer? <form method='POST' class='inline ml-2'><input type='hidden' name='csrfmiddlewaretoken' value='{get_token(request)}'><input type='hidden' name='accion' value='deshacer'><button type='submit' class='underline font-black uppercase text-emerald-700 hover:text-emerald-900'>[Deshacer]</button></form> <span class='countdown-timer ml-2 opacity-50'>(10s)</span>")
             return redirect(f"{reverse('admin_dashboard')}?section=locales")
 
+        elif accion == "eliminar_prenda":
+            prenda_id = request.POST.get("prenda_id")
+            prenda = get_object_or_404(Prendas, pk=prenda_id)
+            motivo = request.POST.get("motivo", "").strip() or "Incumplimiento de las políticas de la plataforma."
+            
+            with transaction.atomic():
+                # Validación de integridad: No borrar si hay pedidos pendientes que dependan de este ID exacto
+                if Pedido.objects.filter(detallepedido__prenda=prenda, estado__estado_pedido__in=['PENDIENTE', 'En Proceso']).exists():
+                    messages.error(request, f"❌ No se puede eliminar permanentemente: el uniforme '{prenda.nombre}' tiene pedidos en curso.")
+                else:
+                    # Notificar al vendedor (Dueño del local)
+                    from locales.models import Notificacion
+                    Notificacion.objects.create(
+                        usuario=prenda.idLocal.IdUsuario,
+                        mensaje=f"Tu uniforme '{prenda.nombre}' ha sido eliminado permanentemente por la administración.",
+                        motivo=motivo,
+                        tipo='error'
+                    )
+
+                    # Respaldar en sesión para deshacer
+                    request.session['last_deleted_prenda'] = {
+                        'idLocal_id': prenda.idLocal_id,
+                        'nombre': prenda.nombre,
+                        'descripcion': prenda.descripcion,
+                        'precio': str(prenda.precio),
+                        'talla': prenda.talla,
+                        'material': prenda.material,
+                        'stock': prenda.stock,
+                        'activo': prenda.activo,
+                        'tipoPrenda': prenda.tipoPrenda,
+                        'imagen': prenda.imagen.name if prenda.imagen else None
+                    }
+                    nombre = prenda.nombre
+                    prenda.delete()
+                    messages.success(request, f"🗑️ Uniforme <b>{nombre}</b> eliminado permanentemente. ¿Deseas deshacer? <form method='POST' class='inline ml-2'><input type='hidden' name='csrfmiddlewaretoken' value='{get_token(request)}'><input type='hidden' name='accion' value='deshacer'><button type='submit' class='underline font-black uppercase text-emerald-700 hover:text-emerald-900'>[Deshacer]</button></form> <span class='countdown-timer ml-2 opacity-50'>(10s)</span>")
+            return redirect(f"{reverse('admin_dashboard')}?section=uniformes")
+
         elif accion == "cancelar_pedido":
             pedido_id = request.POST.get("pedido_id")
             motivo = request.POST.get("motivo", "").strip() or "Cancelación por parte del administrador."
@@ -198,7 +242,7 @@ def dashadmin(request):
     from locales.models import Notificacion 
     notifs = Notificacion.objects.filter(usuario_id=request.session.get("usuario_id")).order_by('-fecha')[:10]
 
-    usuarios, locales, pedidos = [], [], []
+    usuarios, locales, pedidos, uniformes = [], [], [], []
     
     if section == 'usuarios':
         usuarios = Usuario.objects.all().select_related('rol').order_by('-id')
@@ -246,12 +290,22 @@ def dashadmin(request):
         if f_estado:
             pedidos = pedidos.filter(estado__estado_pedido=f_estado)
 
+    elif section == 'uniformes':
+        uniformes = Prendas.objects.all().select_related('idLocal', 'idLocal__IdUsuario').order_by('-idPrenda')
+        f_talla = request.GET.get('f_talla', '')
+        f_material = request.GET.get('f_material', '')
+        if q_search:
+            uniformes = uniformes.filter(Q(nombre__icontains=q_search) | Q(idPrenda__icontains=q_search) | Q(idLocal__Nombre_local__icontains=q_search))
+        if f_talla: uniformes = uniformes.filter(talla=f_talla)
+        if f_material: uniformes = uniformes.filter(material=f_material)
+
     return render(request, "dashadmin.html", {
         "nombre": request.session.get("usuario_nombre"),
         "section": section,
         "usuarios": usuarios,
         "locales": locales,
         "pedidos": pedidos,
+        "uniformes": uniformes,
         "roles": Rol.objects.all(),
         "notificaciones": notifs,
         "estados_pedido": EstadoPedido.ESTADO_CHOICES,
@@ -261,4 +315,12 @@ def dashadmin(request):
         "f_tipo_id_sel": request.GET.get('f_tipo_id', ''),
         "f_status_sel": request.GET.get('f_status', ''),
         "f_estado_sel": request.GET.get('f_estado', ''),
+        "f_talla_sel": request.GET.get('f_talla', ''),
+        "f_material_sel": request.GET.get('f_material', ''),
+        "talla_choices": Prendas.TALLA_CHOICES,
+        "material_choices": Prendas.MATERIAL_CHOICES,
     })
+
+@never_cache
+def politicas(request):
+    return render(request, "politicas.html")

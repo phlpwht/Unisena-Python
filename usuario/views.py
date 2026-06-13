@@ -527,3 +527,7 @@ def informacion(request):
 @never_cache
 def programas(request):
     return render(request, "programas.html")
+
+@never_cache
+def politicas(request):
+    return render(request, "politicas.html")
