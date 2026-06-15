@@ -1,88 +1,122 @@
-# 🎓 UniSena - Gestión de Uniformes
+# 🎓 UniSena - Plataforma de Gestión de Uniformes
 
-UniSena es una plataforma web desarrollada en Django diseñada para facilitar la compra y venta de uniformes. El sistema permite a los vendedores gestionar sus locales e inventarios, y a los clientes explorar catálogos, gestionar carritos de compras y realizar pedidos con seguimiento de abonos.
+[!Python](https://www.python.org/)
+[!Django](https://www.djangoproject.com/)
+[!Tailwind CSS](https://tailwindcss.com/)
+[!MySQL](https://www.mysql.com/)
 
-## 🚀 Características Principales
+UniSena es una solución web integral diseñada para la comunidad institucional, facilitando la comercialización y gestión de uniformes. La plataforma conecta a vendedores locales con clientes (estudiantes/administrativos), ofreciendo un entorno seguro, eficiente y moderno para la gestión de inventarios y pedidos.
 
-- **Gestión de Usuarios Multi-rol**: Administradores, Vendedores y Clientes.
-- **Autenticación Social**: Integración con Google (Django Allauth).
-- **Gestión de Locales**: Los vendedores pueden registrar hasta 3 locales con horarios y estados de actividad.
-- **Catálogo de Productos**: Filtros avanzados por talla, tipo de prenda, material y rango de precios.
-- **Módulo de Inventario**: Registro automático de movimientos (entradas y salidas) y carga masiva de productos mediante archivos Excel/CSV.
-- **Sistema de Pedidos**: Gestión de carrito, procesamiento de pagos con abonos parciales y seguimiento de pedidos.
-- **Notificaciones**: Envío de correos electrónicos transaccionales (bienvenida, recuperación de contraseña, alertas de seguridad).
+---
 
-## 🛠️ Tecnologías Utilizadas
+## 🌟 Características Principales
 
-- **Backend**: [Django 5.1.6](https://www.djangoproject.com/)
-- **Base de Datos**: MySQL
-- **Frontend**: HTML5, Tailwind CSS (JavaScript para modales e interactividad)
-- **Librerías clave**: 
-    - `django-allauth` (Google Login)
-    - `pandas` & `openpyxl` (Procesamiento de archivos)
-    - `python-dotenv` (Variables de entorno)
-    - `mysqlclient` (Conector BD)
+### 👥 Gestión Multi-rol
+*   **Administradores:** Supervisión global, gestión de usuarios, locales y moderación proactiva de comentarios con filtros de lenguaje.
+*   **Vendedores:** Control de hasta 3 locales, gestión de stock, reportes de ventas y carga masiva de productos.
+*   **Clientes:** Exploración de catálogos con filtros avanzados, sistema de carrito y seguimiento de pedidos con abonos.
 
-## 📋 Requisitos Previos
+### 🚀 Funcionalidades Clave
+*   **🔐 Autenticación Segura:** Login tradicional y social (Google) integrado.
+*   **🌓 Modo Oscuro:** Interfaz adaptable para una mejor experiencia visual en cualquier entorno.
+*   **📦 Inventario Inteligente:** Registro automático de movimientos (entradas/salidas) y soporte para archivos Excel/CSV.
+*   **💳 Sistema de Pagos y Abonos:** Los clientes pueden realizar pagos parciales y los vendedores gestionar saldos pendientes.
+*   **💬 Moderación de Comunidad:** Sistema de calificaciones con detección automática de términos inapropiados.
+*   **📧 Notificaciones:** Correos transaccionales para bienvenida, recuperación de cuenta y alertas de seguridad.
+*   **📱 Comunicación Directa:** Integración con WhatsApp para contactar a los vendedores desde el resumen del pedido.
 
-Antes de comenzar, asegúrate de tener instalado:
-- Python 3.10 o superior
-- MySQL Server
-- Un entorno virtual (recomendado)
+---
+
+## 🛠️ Stack Tecnológico
+
+| Área | Tecnología |
+| :--- | :--- |
+| **Backend** | Python / Django 5.1.6 |
+| **Base de Datos** | MySQL |
+| **Frontend** | HTML5 / Tailwind CSS / JavaScript (Vanilla) |
+| **Librerías** | Pandas, Openpyxl, Django Allauth, Dotenv |
+
+---
+
+## � Requisitos Previos
+
+*   Python 3.10 o superior.
+*   Servidor MySQL.
+*   Navegador web moderno.
+
+---
 
 ## ⚙️ Instalación y Configuración
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/phlpwht/Unisena-Python.git
-   cd Unisena
-   ```
+### 1. Preparar el Entorno
+```bash
+# Clonar el repositorio
+git clone https://github.com/phlpwht/Unisena-Python.git
+cd Unisena
 
-2. **Crear y activar el entorno virtual:**
-   ```bash
-   python -m venv venv 
-   # En Windows:
-   .\venv\Scripts\activate
-   ```
+# Crear y activar entorno virtual
+python -m venv venv
+# Windows:
+.\venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
+```
 
-3. **Instalar dependencias:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 2. Instalar Dependencias
+```bash
+pip install -r requirements.txt
+```
 
-4. **Configurar variables de entorno:**
-   Copia el archivo `.env.example` a uno nuevo llamado `.env` y completa tus credenciales:
-   ```bash
-   copy .env.example .env
-   ```
-   *Es obligatorio configurar la base de datos, la SECRET_KEY y las credenciales de **Google Auth** junto con el **SITE_DOMAIN** para que la autenticación funcione correctamente.*
+### 3. Configurar Variables de Entorno
+Crea un archivo `.env` en la raíz del proyecto basándote en `.env.example`:
+```env
+DEBUG=True
+SECRET_KEY=tu_clave_secreta
 
-5. **Migraciones de Base de Datos:**
-   *El sistema poblará automáticamente los Roles (Cliente, Admin, Vendedor), Estados de Pedido y la configuración de Google.*
-   ```bash
-   python manage.py migrate
-   ```
+# Configuración de Base de Datos
+DB_NAME=unisena
+DB_USER=tu_usuario
+DB_PASSWORD=tu_contraseña
+DB_HOST=127.0.0.1
+DB_PORT=3306
 
-6. **Crear un superusuario:**
-   ```bash
-   python manage.py createsuperuser
-   ```
+# Google Auth & Dominio
+GOOGLE_CLIENT_ID=tu_id_de_google
+GOOGLE_SECRET_KEY=tu_secret_de_google
+SITE_DOMAIN=127.0.0.1:8000
+```
 
-7. **Ejecutar el servidor de desarrollo:**
-   ```bash
-   python manage.py runserver
-   ```
+### 4. Desplegar Base de Datos
+```bash
+# Ejecutar migraciones (puebla roles y estados automáticamente)
+python manage.py migrate
 
-## Estructura del Proyecto
+# Crear cuenta de administrador
+python manage.py createsuperuser
+```
 
-- `usuario/`: Manejo de perfiles, roles, señales y autenticación.
-- `locales/`: Gestión de tiendas y vistas para vendedores.
-- `uniformes/`: Catálogo, carrito y lógica de procesamiento de pedidos.
-- `inventario/`: Registro de movimientos de stock.
-- `config/`: Configuraciones principales del proyecto (settings, urls, wsgi).
-
-## 📧 Contacto
-Si tienes dudas o sugerencias sobre el proyecto, puedes contactar al administrador en: `unisena.app@gmail.com`.
+### 5. Iniciar Aplicación
+```bash
+python manage.py runserver
+```
 
 ---
-*Desarrollado para la gestión eficiente de uniformes escolares y corporativos - 2024.*
+
+## 📂 Estructura del Proyecto
+
+*   `usuario/`: Gestión de perfiles, roles, lógica de bloqueos y autenticación.
+*   `locales/`: Módulo de gestión de tiendas y dashboard para vendedores.
+*   `uniformes/`: Catálogo público, gestión de carrito y procesamiento de pedidos.
+*   `inventario/`: Registro de movimientos de stock y utilidades de carga masiva.
+*   `administradores/`: Panel de control administrativo y herramientas de moderación.
+*   `config/`: Ajustes centrales del proyecto, URLs y configuración de WSGI/ASGI.
+
+---
+
+## 📧 Contacto & Soporte
+
+Si tienes dudas o sugerencias sobre **UniSena**, puedes contactar al equipo de desarrollo:
+📩 **Email:** unisena.app@gmail.com
+
+---
+*© 2024 UniSena - Gestión eficiente de uniformes institucionales.*
