@@ -1,10 +1,10 @@
 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b pb-4">
   <h2 class="text-[#125f58] text-xl font-bold">
-    📦 Inventario del Local
+    Inventario del Local
   </h2>
   <button id="btn-bulk-delete" type="button" onclick="confirmarMasivo()" 
           class="hidden bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-lg shadow-red-600/20 transition-all transform hover:scale-105 active:scale-95">
-    🗑️ Eliminar Seleccionados
+    Eliminar Seleccionados
   </button>
 </div>
 
@@ -214,7 +214,7 @@
     divCantidad.classList.add("hidden");
 
     if (tipo === 'eliminar') {
-        modalText.textContent = "¿Deseas retirar existencias de este uniforme? 🗑️";
+        modalText.textContent = "¿Deseas retirar existencias de este uniforme?";
         btnSubmit.className = "bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg";
         btnSubmit.textContent = "Sí, retirar";
         divCantidad.classList.remove("hidden");
@@ -227,7 +227,7 @@
             if (parseInt(inputCantidad.value) >= parseInt(stock)) {
                 warning.classList.remove("hidden");
                 warning.classList.add("flex");
-                btnSubmit.textContent = "💥 Confirmar Eliminación Total";
+                btnSubmit.textContent = "Confirmar Eliminación Total";
                 btnSubmit.classList.add("bg-gray-900");
             } else {
                 warning.classList.add("hidden");

@@ -1,9 +1,9 @@
-from django.shortcuts import render,redirect, get_object_or_404
+from django.shortcuts import render,redirect, get_object_or_404, HttpResponse
 from django.core.paginator import Paginator
 from django.contrib import messages
 from uniformes.models import Prendas
 from .models import Usuario,Rol
-from uniformes.models import Pedido, EstadoPedido
+from uniformes.models import Pedido, EstadoPedido, CalificacionPedido
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail,EmailMultiAlternatives
 from django.conf import settings
@@ -15,6 +15,7 @@ from django.db.models import OuterRef, Subquery
 from django.views.decorators.cache import never_cache
 from allauth.socialaccount.models import SocialAccount
 from locales.models import Notificacion
+from .utils import _get_user_block_status
 
 
 
@@ -41,8 +42,11 @@ def login_view(request):
                 request.session["usuario_nombre"] = f"{usuario.nombres} {usuario.apellidos}"
                 request.session["usuario_rol"] = usuario.rol.nombre_rol
 
-                  # Mensaje de bienvenida para login tradicional
-                messages.success(request, f"¡Bienvenido, {usuario.nombres}! 👋")
+                # --- SEGURIDAD: Verificar bloqueo usando el helper centralizado ---
+                # Esto evita mensajes de bienvenida "fantasmas" si el usuario está restringido
+                usuario_bloqueado, _, _ = _get_user_block_status(request)
+                if not usuario_bloqueado:
+                    messages.success(request, f"Bienvenido, {usuario.nombres}!")
                 
                 if usuario.rol.nombre_rol == "Administrador":
                     return redirect("admin_dashboard")
@@ -72,17 +76,27 @@ def landing(request):
     nombre = request.session.get("usuario_nombre")
     rol = request.session.get("usuario_rol")
     usuario_id = request.session.get("usuario_id")
-    
+
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+
+    if usuario_bloqueado:
+        return render(request, "politicas.html", {
+            "usuario_bloqueado": usuario_bloqueado,
+            "msg_bloqueo": msg_bloqueo,
+            "nombre": nombre,
+            "rol": rol,
+        })
+
     # Calculamos el carrito para Clientes o usuarios no logueados (Anónimos)
     cart_count = 0
     notifs = []
     unread_count = 0
     if rol != "Vendedor":
         carrito = request.session.get('carrito', {})
-        if isinstance(carrito, dict):
-            cart_count = sum(carrito.values())
-        else:
-            cart_count = len(carrito) if isinstance(carrito, list) else 0
+        cart_count = sum(carrito.values()) if isinstance(carrito, dict) else (len(carrito) if isinstance(carrito, list) else 0)
+
+    # Obtenemos uniformes de locales que estén activos
+    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
 
     # Contar pedidos donde el estado MÁS RECIENTE sea 'PENDIENTE'
     pedidos_pendientes_count = 0
@@ -95,10 +109,9 @@ def landing(request):
         unread_count = all_notifs.filter(leida=False).count()
         notifs = all_notifs.order_by('-fecha')[:15]
 
-    # Obtenemos uniformes de locales que estén activos
-    prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
-    
     return render(request, "inicio_cliente.html", {
+        "usuario_bloqueado": usuario_bloqueado,
+        "msg_bloqueo": msg_bloqueo,
         "nombre": nombre,
         "rol": rol,
         "prendas": prendas_qs,
@@ -124,6 +137,10 @@ def inicio_cliente(request):
     if str(rol) not in ["Cliente", "Vendedor"]:
         return redirect("login")
 
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        return redirect("landing")
+
     nombre = request.session.get("usuario_nombre")
     rol = request.session.get("usuario_rol")
     usuario_id = request.session.get("usuario_id")
@@ -137,7 +154,7 @@ def inicio_cliente(request):
         else:
             cart_count = len(carrito) if isinstance(carrito, list) else 0
 
-    # 🛒 Obtenemos uniformes de locales que estén activos para que siempre aparezcan
+    # Obtenemos uniformes de locales que estén activos para que siempre aparezcan
     prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
     
     # Contar cuántos pedidos pendientes tiene el cliente
@@ -188,16 +205,16 @@ def registro_view(request):
 
         # --- VALIDACIÓN DE CARACTERES Y LONGITUD (MODELO: 50) ---
         if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', nombres) or len(nombres) > 50:
-            messages.error(request, "❌ Nombres no válidos (Solo letras, máx 50 caracteres).")
+            messages.error(request, "Nombres no válidos (Solo letras, máx 50 caracteres).")
             return render(request, "registro.html")
 
         if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', apellidos) or len(apellidos) > 50:
-            messages.error(request, "❌ Apellidos no válidos (Solo letras, máx 50 caracteres).")
+            messages.error(request, "Apellidos no válidos (Solo letras, máx 50 caracteres).")
             return render(request, "registro.html")
 
         # --- VALIDACIÓN DE LONGITUD DE CONTRASEÑA ---
         if len(password) < 8 or len(password) > 20:
-            messages.error(request, "❌ La contraseña debe tener entre 8 y 20 caracteres.")
+            messages.error(request, "La contraseña debe tener entre 8 y 20 caracteres.")
             return render(request, "registro.html")
 
         # --- VALIDACIÓN DE FECHA DE NACIMIENTO ---
@@ -208,7 +225,7 @@ def registro_view(request):
             
             # 1. Que no sea mayor que el año actual (Fecha futura)
             if fecha_nac_dt > hoy:
-                messages.error(request, "❌ La fecha de nacimiento no puede ser mayor que la fecha actual.")
+                messages.error(request, "La fecha de nacimiento no puede ser mayor que la fecha actual.")
                 return render(request, "registro.html")
             
             # 2. Que no sea "menor" de 60 años (Interpretado como: Máximo 60 años de edad)
@@ -216,7 +233,7 @@ def registro_view(request):
             edad = hoy.year - fecha_nac_dt.year - ((hoy.month, hoy.day) < (fecha_nac_dt.month, fecha_nac_dt.day))
             
             if edad > 70:
-                messages.error(request, "⚠️ ¡Atención! El límite de edad para el registro en UniSena es de 70 años. ¡Agradecemos mucho tu interés! ✨")
+                messages.error(request, "⚠️ ¡Atención! El límite de edad para el registro en UniSena es de 70 años. ¡Agradecemos mucho tu interés!")
                 return render(request, "registro.html")
             
             # 3. Validación de edad mínima (14 años)
@@ -227,15 +244,15 @@ def registro_view(request):
             # --- VALIDACIÓN DE IDENTIFICACIÓN SEGÚN EDAD ---
             if edad >= 18:
                 if tipo_identificacion == 'TI':
-                    messages.error(request, "❌ Eres mayor de edad, debes seleccionar Cédula de Ciudadanía o de Extranjería.")
+                    messages.error(request, "Eres mayor de edad, debes seleccionar Cédula de Ciudadanía o de Extranjería.")
                     return render(request, "registro.html")
             else: # Menor de edad
                 if tipo_identificacion == 'CC':
-                    messages.error(request, "❌ Eres menor de edad, debes seleccionar Tarjeta de Identidad o de Extranjería.")
+                    messages.error(request, "Eres menor de edad, debes seleccionar Tarjeta de Identidad o de Extranjería.")
                     return render(request, "registro.html")
                 
         except (ValueError, TypeError):
-            messages.error(request, "❌ Formato de fecha de nacimiento no válido.")
+            messages.error(request, "Formato de fecha de nacimiento no válido.")
             return render(request, "registro.html")
         # --- FIN VALIDACIÓN ---
 
@@ -245,7 +262,7 @@ def registro_view(request):
 
 
         if not num_identificacion.isdigit() or len(num_identificacion) > 15:
-            messages.error(request, "❌ Identificación no válida (Solo números, máx 15 dígitos).")
+            messages.error(request, "Identificación no válida (Solo números, máx 15 dígitos).")
             return render(request, "registro.html")
 
         if Usuario.objects.filter(correo=email_destino).exists():
@@ -448,7 +465,7 @@ def reset_password(request):
                     "error": f"Código incorrecto ({usuario.reset_intentos}/3)"
                 })
 
-            # ✅ contraseña correcta
+            #contraseña correcta
             usuario.password = make_password(password)
             usuario.reset_codigo = None
             usuario.reset_codigo_fecha = None
@@ -485,14 +502,14 @@ def editar_perfil(request):
 
         # Si es social, no permitimos cambiar nombres/apellidos en el backend por seguridad
         if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', nombres) or len(nombres) > 50:
-            errores.append("❌ Nombres no válidos (Solo letras, máx 50 caracteres).")
+            errores.append("Nombres no válidos (Solo letras, máx 50 caracteres).")
 
         if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$', apellidos) or len(apellidos) > 50:
-            errores.append("❌ Apellidos no válidos (Solo letras, máx 50 caracteres).")
+            errores.append("Apellidos no válidos (Solo letras, máx 50 caracteres).")
 
         # Verificar que el correo no lo tenga OTRO usuario diferente al actual
         if Usuario.objects.filter(correo=correo).exclude(id=usuario_id).exists():
-            errores.append("❌ El correo ya se encuentra registrado por otro usuario.")
+            errores.append("El correo ya se encuentra registrado por otro usuario.")
 
         if errores:
             for error in errores:
@@ -531,3 +548,19 @@ def programas(request):
 @never_cache
 def politicas(request):
     return render(request, "politicas.html")
+
+def aceptar_politicas(request):
+    if request.method == "POST" and "usuario_id" in request.session:
+        usuario = get_object_or_404(Usuario, id=request.session["usuario_id"])
+        usuario.pendiente_aceptar_politicas = False
+        usuario.save()
+
+        # Al aceptar políticas después de un bloqueo, rehabilitamos sus comentarios
+        # que fueron ocultados por moderación (estado BLOQUEADO)
+        CalificacionPedido.objects.filter(
+            usuario=usuario, 
+            estado_moderacion='BLOQUEADO'
+        ).update(estado_moderacion='REVISADO', esta_visible=True)
+
+        messages.success(request, "Gracias! Has aceptado nuestras políticas. Ya puedes usar la plataforma.")
+    return redirect("landing")

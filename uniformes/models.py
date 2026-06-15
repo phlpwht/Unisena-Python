@@ -86,6 +86,17 @@ class CalificacionPedido(models.Model):
     id_calificacion = models.AutoField(primary_key=True)
     locales = models.ForeignKey(Local, on_delete=models.CASCADE)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True)
-    comentario = models.CharField(max_length=500)
+    comentario = models.CharField(max_length=500, null=True, blank=True)
+    fecha = models.DateTimeField(auto_now=True)
     valoracion = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+
+    ESTADO_MODERACION = [
+        ('PENDIENTE', 'Pendiente'),
+        ('REVISADO', 'Revisado'),
+        ('ADVERTIDO', 'Advertido'),
+        ('BLOQUEADO', 'Bloqueado'),
+    ]
+    estado_moderacion = models.CharField(max_length=20, choices=ESTADO_MODERACION, default='REVISADO')
+    motivo_deteccion = models.CharField(max_length=255, null=True, blank=True)
+    esta_visible = models.BooleanField(default=True)
     

@@ -1,4 +1,4 @@
-import re
+import re, os
 from uniformes.models import Prendas, Pedido, DetallePedido, EstadoPedido
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -67,23 +67,29 @@ def crear_local(request):
         direccion = request.POST.get('Ubicacion_direccion', '').strip()
         descripcion = request.POST.get('Descripcion', '').strip()
         numero = request.POST.get('Numero', '').strip()
+        imagen = request.FILES.get('Imagen')
 
         errores = []
-        if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
+        if len(nombre_local) > 100: errores.append("El nombre es demasiado largo (máx 100 caracteres)")
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre_local):
-            errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
+            errores.append("El nombre del local solo puede contener letras, números y espacios")
 
         if not numero or numero.strip() == "":
-            errores.append("❌ El número de contacto es obligatorio y no puede estar vacío")
+            errores.append("El número de contacto es obligatorio y no puede estar vacío")
         elif not numero.isdigit():
-            errores.append("❌ El número solo debe contener dígitos (0-9)")
+            errores.append("El número solo debe contener dígitos (0-9)")
         elif len(numero) != 10:
-            errores.append("❌ El número de contacto debe tener exactamente 10 dígitos")
+            errores.append("El número de contacto debe tener exactamente 10 dígitos")
         elif Local.objects.filter(Numero=numero).exists():
-            errores.append(f"❌ El número '{numero}' ya está registrado por otro local")
+            errores.append(f"El número '{numero}' ya está registrado por otro local")
 
-        if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
-        if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
+        if len(direccion) > 255: errores.append("La dirección es demasiado larga (máx 255 caracteres)")
+        if len(descripcion) > 1000: errores.append("La descripción es demasiado larga (máx 1000 caracteres)")
+
+        if imagen:
+            ext = os.path.splitext(imagen.name)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                errores.append("El archivo del local debe ser una imagen (JPG, PNG, WEBP)")
 
         if errores:
             for error in errores:
@@ -91,7 +97,7 @@ def crear_local(request):
             return render(request, 'formulario.html', {'local': request.POST})
 
         if total_locales >= 3:
-            messages.error(request, "Solo puedes registrar máximo 3 locales ❌")
+            messages.error(request, "Solo puedes registrar máximo 3 locales")
             return redirect('lista_locales')
 
         Local.objects.create(
@@ -99,7 +105,7 @@ def crear_local(request):
             Nombre_local=nombre_local,
             Descripcion=descripcion,
             Ubicacion_direccion=direccion,
-            Imagen=request.FILES.get('Imagen'),
+            Imagen=imagen,
             Horaapertura = request.POST.get('Horaapertura') or None,
             HoraCierre = request.POST.get('HoraCierre') or None,
             Numero=numero
@@ -120,25 +126,31 @@ def editar_local(request, id):
         direccion = request.POST.get('Ubicacion_direccion', '').strip()
         descripcion = request.POST.get('Descripcion', '').strip()
         numero = request.POST.get('Numero', '').strip()
+        imagen_nueva = request.FILES.get('Imagen')
 
         errores = []
-        if len(nombre_local) > 100: errores.append("❌ El nombre es demasiado largo (máx 100 caracteres)")
+        if len(nombre_local) > 100: errores.append("El nombre es demasiado largo (máx 100 caracteres)")
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre_local):
-            errores.append("❌ El nombre del local solo puede contener letras, números y espacios")
+            errores.append("El nombre del local solo puede contener letras, números y espacios")
         if Local.objects.filter(IdUsuario_id=usuario_id, Nombre_local__iexact=nombre_local).exclude(IdLocal=id).exists():
-            errores.append(f"❌ Ya tienes otro local llamado '{nombre_local}'")
+            errores.append(f"Ya tienes otro local llamado '{nombre_local}'")
         
         if not numero or numero.strip() == "":
-            errores.append("❌ El número de contacto es obligatorio y no puede estar vacío")
+            errores.append("El número de contacto es obligatorio y no puede estar vacío")
         elif not numero.isdigit():
-            errores.append("❌ El número solo debe contener dígitos (0-9)")
+            errores.append("El número solo debe contener dígitos (0-9)")
         elif len(numero) != 10:
-            errores.append("❌ El número de contacto debe tener exactamente 10 dígitos")
+            errores.append("El número de contacto debe tener exactamente 10 dígitos")
         elif Local.objects.filter(Numero=numero).exclude(IdLocal=id).exists():
-            errores.append(f"❌ El número '{numero}' ya está en uso por otro local")
+            errores.append(f"El número '{numero}' ya está en uso por otro local")
 
-        if len(direccion) > 255: errores.append("❌ La dirección es demasiado larga (máx 255 caracteres)")
-        if len(descripcion) > 1000: errores.append("❌ La descripción es demasiado larga (máx 1000 caracteres)")
+        if len(direccion) > 255: errores.append("La dirección es demasiado larga (máx 255 caracteres)")
+        if len(descripcion) > 1000: errores.append("La descripción es demasiado larga (máx 1000 caracteres)")
+
+        if imagen_nueva:
+            ext = os.path.splitext(imagen_nueva.name)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                errores.append("El nuevo archivo debe ser una imagen válida")
 
         if errores:
             for error in errores:
@@ -156,8 +168,8 @@ def editar_local(request, id):
         local.Descripcion = descripcion
         local.Ubicacion_direccion = direccion
         local.Numero = numero
-        if request.FILES.get('Imagen'):
-            local.Imagen = request.FILES.get('Imagen')
+        if imagen_nueva:
+            local.Imagen = imagen_nueva
         hora_apertura = request.POST.get('Horaapertura')
         hora_cierre = request.POST.get('HoraCierre')
 
@@ -165,7 +177,7 @@ def editar_local(request, id):
         local.HoraCierre = hora_cierre if hora_cierre else None
 
         local.save()
-        messages.success(request, "Local actualizado correctamente ✨")
+        messages.success(request, "Local actualizado correctamente")
         return redirect('lista_locales')
     return render(request, 'formulario.html', {'local': local})
 
@@ -525,7 +537,7 @@ def toggle_activo_local(request, id):
             color_header = "#125f58" if nuevo_estado else "#f59e0b"
             
             # Enviar Correo de Notificación
-            asunto = f"⚠️ Notificación de Local: {local.Nombre_local}"
+            asunto = f"Notificación de Local: {local.Nombre_local}"
             mensaje_texto = f"Hola {usuario.nombres}, tu local '{local.Nombre_local}' ha sido {estado_str.lower()}."
             
             mensaje_html = f"""
@@ -630,14 +642,25 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
             estado_anterior = pedido.estado.estado_pedido
             nuevo_estado_nombre = nuevo_estado_val.strip()
 
+            # 🛡️ SEGURIDAD: FLUJO DE ESTADOS IRREVERSIBLE
+            # 1. No permitir cambios si el pedido ya está en un estado final
+            if estado_anterior in ['COMPLETADO', 'CANCELADO']:
+                messages.error(request, f"Este pedido ya se encuentra en un estado final ({estado_anterior}) y no puede ser modificado.")
+                return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
+
+            # 2. Impedir retroceder de 'En Proceso' a 'Pendiente'
+            if estado_anterior == 'En Proceso' and nuevo_estado_nombre == 'PENDIENTE':
+                messages.error(request, "Acción no permitida: Un pedido 'En Proceso' solo puede pasar a 'Completado' o 'Cancelado'.")
+                return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
+
             # 🚨 Lógica para Cancelación por parte del Vendedor
             if nuevo_estado_nombre == 'CANCELADO':
                 motivo = request.POST.get('motivo', '').strip()
                 if not motivo:
-                    messages.error(request, "❌ Debes proporcionar un motivo para cancelar el pedido.")
+                    messages.error(request, "Debes proporcionar un motivo para cancelar el pedido.")
                     return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
                 if len(motivo) > 150:
-                    messages.error(request, "❌ El motivo no puede exceder los 150 caracteres.")
+                    messages.error(request, "El motivo no puede exceder los 150 caracteres.")
                     return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
                 
                 # Notificar al cliente
@@ -660,6 +683,10 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
 
                 # Descontar stock y generar movimientos
                 for item in detalles_items:
+                    # Al completar el pedido, el saldo debe quedar en 0 (abono = total)
+                    item.total_abono = item.total_pedido
+                    item.save()
+
                     prenda = item.prenda
                     prenda.stock -= item.cantidad
                     if prenda.stock <= 0:
@@ -678,7 +705,7 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
             estado_obj, _ = EstadoPedido.objects.get_or_create(estado_pedido=nuevo_estado_nombre)
             pedido.estado = estado_obj
             pedido.save()
-            messages.success(request, f"✅ Estado de la orden actualizado a {nuevo_estado_val}")
+            messages.success(request, f"Estado de la orden actualizado a {nuevo_estado_val}")
             return redirect('detalle_pedido_vendedor', id_local=local.IdLocal, id_pedido=pedido.idPedido)
 
     detalles = DetallePedido.objects.filter(pedido=pedido, prenda__idLocal=local)

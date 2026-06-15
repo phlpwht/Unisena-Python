@@ -27,7 +27,7 @@
   <body
     class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen font-sans"
   >
-    <!-- ✅ MENSAJES (SOLO UNO, SIN DUPLICAR) -->
+    <!--MENSAJES (SOLO UNO, SIN DUPLICAR) -->
     {% if messages %}
     <div
       id="mensaje-container"
@@ -155,7 +155,7 @@
                 onclick="abrirModal('editar', '{% url 'editar_local' local.IdLocal %}')"
                 class="flex-1 text-center bg-[#125f58] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#0d4742] transition"
               >
-                ✏️ Editar
+                Editar
               </a>
 
               <!-- 🔘 ACTIVAR/DESACTIVAR -->
@@ -164,16 +164,16 @@
                 onclick="abrirModalStatus('{{ local.IdLocal }}', '{{ local.Nombre_local }}', {{ local.EstaActivo|yesno:'true,false' }})"
                 class="flex-1 text-center {% if local.EstaActivo %}bg-yellow-500 hover:bg-yellow-600{% else %}bg-gray-500 hover:bg-gray-600{% endif %} text-white py-2 rounded-lg text-sm font-semibold transition"
               >
-                {% if local.EstaActivo %}⏸️ Desactivar{% else %}▶️ Activar{% endif %}
+                {% if local.EstaActivo %}Desactivar{% else %}▶️ Activar{% endif %}
               </button>
 
-              <!-- 🗑️ ELIMINAR (POST + MODAL) -->
+              <!--ELIMINAR (POST + MODAL) -->
               <button
                 type="button"
                 onclick="abrirModal('eliminar', '{% url 'eliminar_local' local.IdLocal %}', '{{ local.Nombre_local }}')"
                 class="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition"
               >
-                🗑️ Eliminar
+                Eliminar
               </button>
 
               {% else %}
@@ -182,7 +182,7 @@
                 href="{% url 'detalle_local' local.IdLocal %}"
                 class="w-full text-center bg-[#125f58] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#0d4742] transition"
               >
-                ℹ️ Ver información (Gestionar)
+                Ver información (Gestionar)
               </a>
 
               {% endif %}
@@ -259,7 +259,7 @@
         btn.classList.remove("opacity-50", "cursor-not-allowed");
 
         if (tipo === "eliminar") {
-          titulo.innerText = "🗑️ Eliminar Local";
+          titulo.innerText = "Eliminar Local";
           texto.innerText = "Esta acción eliminará permanentemente el local y su inventario.";
           campoConfirm.classList.remove("hidden");
           labelNombre.innerText = extra;
@@ -289,7 +289,7 @@
         }
 
         if (tipo === "editar") {
-          titulo.innerText = "✏️ Editar Local";
+          titulo.innerText = "Editar Local";
           texto.innerText = "¿Seguro que deseas editar este local?";
           btn.className = "px-4 py-2 bg-[#125f58] text-white rounded-lg hover:bg-[#0d4742] transition";
 
@@ -323,7 +323,7 @@
 
         container.innerHTML = `
       <div class="bg-white border-l-4 border-red-500 text-red-600 px-6 py-3 rounded-lg shadow-lg animate-fade-in">
-        Ya tienes los locales máximos permitidos ❌
+        Ya tienes los locales máximos permitidos
       </div>
     `;
 

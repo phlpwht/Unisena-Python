@@ -26,5 +26,8 @@ urlpatterns = [
     #Informacion sobre programas, uniformes y sus tipos de especificaciones
     path('informacion/', views.informacion, name='informacion'),
     path('programas/', views.programas, name='programas'),
+    
+    # RUTA PARA ACEPTAR POLÍTICAS DE PRIVACIDAD
+    path('aceptar-politicas/', views.aceptar_politicas, name='aceptar_politicas'),
 
 ]

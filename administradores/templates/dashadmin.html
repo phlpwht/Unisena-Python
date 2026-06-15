@@ -83,6 +83,12 @@
                             <span>Usuarios</span>
                         </span>
                     </a>
+                    <a href="?section=comentarios" class="sidebar-item {% if section == 'comentarios' %}sidebar-active{% endif %}">
+                        <span class="flex items-center gap-4">
+                            <i class="bi bi-chat-dots text-lg group-hover:scale-110 transition-transform"></i>
+                            <span>Comentarios en Revisión</span>
+                        </span>
+                    </a>
                 </nav>
             </div>
 
@@ -249,7 +255,17 @@
                                     </div>
                                 </td>
                                 <td class="px-8 py-6">
-                                    <div class="flex justify-center">
+                                    <div class="flex justify-center gap-2">
+                                        {% if u.bloqueado_hasta or u.pendiente_aceptar_politicas %}
+                                        <form method="POST" class="inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="user_id" value="{{ u.id }}">
+                                            <input type="hidden" name="accion" value="desbloquear_usuario">
+                                            <button type="submit" title="Desbloquear Usuario" class="text-emerald-500 hover:scale-110 transition-transform">
+                                                <i class="bi bi-unlock-fill text-lg"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
                                         <button type="button" 
                                             onclick="openDeleteModal('{{ u.id }}', '{{ u.nombres }} {{ u.apellidos }}')"
                                             class="w-10 h-10 rounded-xl flex items-center justify-center text-rose-400 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-500/30 transition-all active:scale-90">
@@ -274,47 +290,49 @@
                     </div>
                     <form method="GET" class="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[2rem] shadow-inner border border-gray-100">
                         <input type="hidden" name="section" value="locales">
-                        <input type="text" name="q_search" value="{{ q_search }}" placeholder="Nombre o dueño..." 
+                        <input type="text" name="q_search" value="{{ q_search }}" placeholder="Nombre, descripción o dueño..." 
                             class="pl-6 pr-4 py-2 bg-gray-50 rounded-xl text-[11px] font-bold focus:bg-white outline-none border border-transparent focus:border-[#125f58]/20 transition-all w-48">
                         <select name="f_status" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
                             <option value="">Estado</option>
                             <option value="1" {% if f_status_sel == '1' %}selected{% endif %}>Activos</option>
                             <option value="0" {% if f_status_sel == '0' %}selected{% endif %}>Inactivos</option>
                         </select>
+                        <select name="f_user_status" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
+                            <option value="">Estado Vendedor</option>
+                            <option value="active" {% if f_user_status_sel == 'active' %}selected{% endif %}>Activo</option>
+                            <option value="blocked" {% if f_user_status_sel == 'blocked' %}selected{% endif %}>Bloqueado</option>
+                        </select>
                         <button type="submit" class="bg-[#125f58] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition-colors shadow-lg shadow-[#125f58]/20">Buscar</button>
+                        {% if q_search or f_status_sel or f_user_status_sel %}
+                            <a href="?section=locales" class="text-rose-400 text-lg hover:rotate-90 transition-transform" title="Limpiar Filtros"><i class="bi bi-x-circle-fill"></i></a>
+                        {% endif %}
                     </form>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/50">
-                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Establecimiento</th>
-                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Responsable</th>
-                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Estado</th>
-                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Gestión</th>
+                                <th class="px-4 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Local</th>
+                                <th class="px-4 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Gestión</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             {% for l in locales %}
                             <tr class="group hover:bg-gray-50/50 transition-all duration-300">
-                                <td class="px-8 py-6">
+                                <td class="px-4 py-6">
                                     <p class="text-sm font-black text-gray-800 tracking-tight">{{ l.Nombre_local }}</p>
                                     <p class="text-[10px] text-gray-400 font-bold uppercase">{{ l.Ubicacion_direccion }}</p>
                                 </td>
-                                <td class="px-8 py-6">
-                                    <p class="text-xs font-black text-gray-600">{{ l.IdUsuario.nombres }} {{ l.IdUsuario.apellidos }}</p>
-                                </td>
-                                <td class="px-8 py-6">
-                                    <span class="flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest 
-                                        {% if l.EstaActivo %}bg-emerald-100 text-emerald-600{% else %}bg-yellow-100 text-yellow-600{% endif %}">
-                                        <i class="bi {% if l.EstaActivo %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %} text-xs"></i>
-                                        {{ l.EstaActivo|yesno:"Activo,Inactivo" }}
-                                    </span>
-                                </td>
-                                <td class="px-8 py-6 text-center">
-                                    <button onclick="openDeleteLocalModal('{{ l.IdLocal }}', '{{ l.Nombre_local }}')" class="text-rose-400 hover:text-rose-600 transition-colors">
-                                        <i class="bi bi-trash3 text-lg"></i>
-                                    </button>
+                                <td class="px-4 py-6 text-center">
+                                    <div class="flex justify-center gap-3">
+                                        <button onclick="openLocalDetailsModal('{{ l.IdLocal }}')"
+                                            title="Más Información" class="text-[#125f58] hover:text-[#0d4742] transition-all hover:scale-110">
+                                            <i class="bi bi-info-circle-fill text-xl"></i>
+                                        </button>
+                                        <button onclick="openDeleteLocalModal('{{ l.IdLocal }}', '{{ l.Nombre_local }}')" class="text-rose-400 hover:text-rose-600 transition-colors">
+                                            <i class="bi bi-trash3 text-lg"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -333,7 +351,7 @@
                     </div>
                     <form method="GET" class="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[2rem] shadow-inner border border-gray-100">
                         <input type="hidden" name="section" value="uniformes">
-                        <input type="text" name="q_search" value="{{ q_search }}" placeholder="Nombre, ID o Local..." 
+                        <input type="text" name="q_search" value="{{ q_search }}" placeholder="Nombre, descripción, ID o Local..." 
                             class="pl-6 pr-4 py-2 bg-gray-50 rounded-xl text-[11px] font-bold focus:bg-white outline-none border border-transparent focus:border-[#125f58]/20 transition-all w-48">
                         <select name="f_talla" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
                             <option value="">Talla</option>
@@ -347,7 +365,16 @@
                             <option value="{{ val }}" {% if f_material_sel == val %}selected{% endif %}>{{ lab }}</option>
                             {% endfor %}
                         </select>
+                        <select name="f_tipo_prenda" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
+                            <option value="">Tipo Prenda</option>
+                            {% for val, lab in prenda_tipo_choices %}
+                            <option value="{{ val }}" {% if f_tipo_prenda_sel == val %}selected{% endif %}>{{ lab }}</option>
+                            {% endfor %}
+                        </select>
                         <button type="submit" class="bg-[#125f58] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition-colors shadow-lg shadow-[#125f58]/20">Filtrar</button>
+                        {% if q_search or f_talla_sel or f_material_sel or f_tipo_prenda_sel %}
+                            <a href="?section=uniformes" class="text-rose-400 text-lg hover:rotate-90 transition-transform" title="Limpiar Filtros"><i class="bi bi-x-circle-fill"></i></a>
+                        {% endif %}
                     </form>
                 </div>
                 <div class="overflow-x-auto">
@@ -356,8 +383,6 @@
                             <tr class="bg-gray-50/50">
                                 <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ID / Producto</th>
                                 <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Local / Vendedor</th>
-                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Especificaciones</th>
-                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Stock / Precio</th>
                                 <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Acción</th>
                             </tr>
                         </thead>
@@ -372,20 +397,101 @@
                                     <p class="text-xs font-black text-gray-700">{{ u.idLocal.Nombre_local }}</p>
                                     <p class="text-[9px] text-gray-400 font-bold uppercase">{{ u.idLocal.IdUsuario.nombres }} {{ u.idLocal.IdUsuario.apellidos }}</p>
                                 </td>
-                                <td class="px-8 py-6">
-                                    <div class="flex gap-2">
-                                        <span class="px-2 py-1 bg-gray-100 rounded text-[9px] font-black text-gray-500 uppercase">Talla {{ u.talla }}</span>
-                                        <span class="px-2 py-1 bg-gray-100 rounded text-[9px] font-black text-gray-500 uppercase">{{ u.material }}</span>
+                                <td class="px-8 py-6 text-center">
+                                    <div class="flex justify-center gap-3">
+                                        <button onclick="openPrendaDetailsModal('{{ u.idPrenda }}')"
+                                            title="Más Información" class="text-[#125f58] hover:text-[#0d4742] transition-all hover:scale-110">
+                                            <i class="bi bi-info-circle-fill text-xl"></i>
+                                        </button>
+                                        <button onclick="openDeletePrendaModal('{{ u.idPrenda }}', '{{ u.nombre }}')" class="text-rose-400 hover:text-rose-600 transition-all hover:scale-110">
+                                            <i class="bi bi-trash3-fill text-lg"></i>
+                                        </button>
                                     </div>
                                 </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            {% elif section == 'comentarios' %}
+            <!-- SECCIÓN DE COMENTARIOS EN REVISIÓN -->
+            <section class="bg-white rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50 overflow-hidden">
+                <div class="p-8 lg:p-12 border-b border-gray-100 bg-gray-50/30 flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div>
+                        <h2 class="text-2xl lg:text-3xl font-black text-gray-800 tracking-tighter uppercase italic">Moderación de Comentarios</h2>
+                        <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Supervisión de lenguaje y convivencia</p>
+                    </div>
+                    <form method="GET" class="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[2rem] shadow-inner border border-gray-100">
+                        <input type="hidden" name="section" value="comentarios">
+                        <input type="text" name="q_search" value="{{ q_search }}" placeholder="Comentario, usuario o local..." 
+                            class="pl-6 pr-4 py-2 bg-gray-50 rounded-xl text-[11px] font-bold focus:bg-white outline-none border border-transparent focus:border-[#125f58]/20 transition-all w-48">
+                        <select name="f_estado_moderacion" class="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none">
+                            <option value="">Estado</option>
+                            <option value="PENDIENTE" {% if f_estado_moderacion_sel == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                            <option value="REVISADO" {% if f_estado_moderacion_sel == 'REVISADO' %}selected{% endif %}>Revisado</option>
+                            <option value="ADVERTIDO" {% if f_estado_moderacion_sel == 'ADVERTIDO' %}selected{% endif %}>Advertido</option>
+                            <option value="BLOQUEADO" {% if f_estado_moderacion_sel == 'BLOQUEADO' %}selected{% endif %}>Bloqueado</option>
+                        </select>
+                        <button type="submit" class="bg-[#125f58] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition-colors shadow-lg shadow-[#125f58]/20">Filtrar</button>
+                        {% if q_search or f_estado_moderacion_sel %}
+                            <a href="?section=comentarios" class="text-rose-400 text-lg hover:rotate-90 transition-transform" title="Limpiar Filtros"><i class="bi bi-x-circle-fill"></i></a>
+                        {% endif %}
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/50">
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ID / Usuario</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Local</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Comentario</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Detección / Estado</th>
+                                <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {% for c in comentarios %}
+                            <tr class="group hover:bg-gray-50/50 transition-all duration-300">
                                 <td class="px-8 py-6">
-                                    <p class="text-xs font-black {% if u.stock == 0 %}text-rose-500{% else %}text-gray-800{% endif %}">Stock: {{ u.stock }}</p>
-                                    <p class="text-[10px] font-bold text-[#125f58]">${{ u.precio|floatformat:0 }} COP</p>
+                                    <p class="text-[10px] font-black text-[#125f58]">#{{ c.id_calificacion }}</p>
+                                    <p class="text-xs font-black text-gray-700">{{ c.usuario.nombres }} {{ c.usuario.apellidos }}</p>
+                                    <p class="text-[9px] text-gray-400">UID: {{ c.usuario.id }} | {{ c.fecha|date:"d/m/Y H:i" }}</p>
                                 </td>
-                                <td class="px-8 py-6 text-center">
-                                    <button onclick="openDeletePrendaModal('{{ u.idPrenda }}', '{{ u.nombre }}')" class="text-rose-400 hover:text-rose-600 transition-all hover:scale-110">
-                                        <i class="bi bi-trash3-fill text-lg"></i>
-                                    </button>
+                                <td class="px-8 py-6">
+                                    <p class="text-xs font-black text-gray-600">{{ c.locales.Nombre_local }}</p>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <p class="text-xs text-gray-500 italic max-w-xs break-words">"{{ c.comentario }}"</p>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <p class="text-[9px] font-black text-rose-400 uppercase mb-1">{{ c.motivo_deteccion|default:"Filtro manual" }}</p>
+                                    <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase 
+                                        {% if c.estado_moderacion == 'PENDIENTE' %}bg-orange-100 text-orange-600
+                                        {% elif c.estado_moderacion == 'REVISADO' %}bg-emerald-100 text-emerald-600
+                                        {% elif c.estado_moderacion == 'ADVERTIDO' %}bg-yellow-100 text-yellow-600
+                                        {% else %}bg-rose-100 text-rose-600{% endif %}">
+                                        {{ c.estado_moderacion }}
+                                    </span>
+                                </td>
+                                <td class="px-8 py-6">
+                                    <div class="flex justify-center gap-2">
+                                        {% if c.estado_moderacion == 'PENDIENTE' %}
+                                        <form method="POST" class="inline">
+                                            {% csrf_token %}<input type="hidden" name="accion" value="marcar_revisado"><input type="hidden" name="comentario_id" value="{{ c.id_calificacion }}">
+                                            <button title="Marcar como revisado" class="text-emerald-500 hover:scale-110 transition-transform"><i class="bi bi-check-circle-fill text-xl"></i></button>
+                                        </form>
+                                        {% endif %}
+                                        <form method="POST" class="inline">
+                                            {% csrf_token %}<input type="hidden" name="accion" value="advertir_comentario"><input type="hidden" name="comentario_id" value="{{ c.id_calificacion }}">
+                                            <button title="Enviar advertencia" class="text-yellow-500 hover:scale-110 transition-transform"><i class="bi bi-exclamation-triangle-fill text-xl"></i></button>
+                                        </form>
+                                        <button onclick="openBlockModerationModal('{{ c.id_calificacion }}', '{{ c.usuario.nombres }} {{ c.usuario.apellidos }}')" 
+                                            title="Bloquear Usuario" class="text-rose-500 hover:scale-110 transition-transform">
+                                            <i class="bi bi-person-x-fill text-xl"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -413,6 +519,9 @@
                             {% endfor %}
                         </select>
                         <button type="submit" class="bg-[#125f58] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0d4742] transition-colors shadow-lg shadow-[#125f58]/20">Filtrar</button>
+                        {% if q_search or f_estado_sel %}
+                            <a href="?section=pedidos" class="text-rose-400 text-lg hover:rotate-90 transition-transform" title="Limpiar Filtros"><i class="bi bi-x-circle-fill"></i></a>
+                        {% endif %}
                     </form>
                 </div>
                 <div class="overflow-x-auto">
@@ -492,6 +601,100 @@
         </main>
     </div>
 
+    <!-- MODAL DE DETALLES DEL LOCAL (UBICACIÓN GLOBAL) -->
+    <div id="localDetailsModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center border-b border-gray-100">
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic" id="localDetailsName"></h3>
+                <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed" id="localDetailsAddress"></p>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Descripción</p>
+                        <p class="text-sm text-gray-700" id="localDetailsDescription"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Responsable</p>
+                        <p class="text-sm font-black text-gray-700" id="localDetailsOwnerName"></p>
+                        <p class="text-[10px] font-bold text-[#125f58]" id="localDetailsOwnerId"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estado del Local</p>
+                        <span id="localDetailsStatus" class="px-3 py-1 rounded-full text-[9px] font-black uppercase"></span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estado del Vendedor</p>
+                        <div id="localDetailsUserStatus"></div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Contacto</p>
+                        <p class="text-sm text-gray-700" id="localDetailsContact"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Horario</p>
+                        <p class="text-sm text-gray-700" id="localDetailsHours"></p>
+                    </div>
+                </div>
+                <div class="flex justify-center gap-3 pt-4">
+                    <button type="button" onclick="closeLocalDetailsModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cerrar</button>
+                    <button onclick="openBlockUserModal(document.getElementById('localDetailsOwnerId').innerText.replace('ID: ', ''), document.getElementById('localDetailsOwnerName').innerText)"
+                        title="Bloquear Vendedor" class="flex-1 py-3 bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95">
+                        <i class="bi bi-person-x-fill"></i> Bloquear Vendedor
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE DETALLES DEL UNIFORME (UBICACIÓN GLOBAL) -->
+    <div id="prendaDetailsModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center border-b border-gray-100 flex flex-col items-center">
+                <div id="prendaDetailsImageContainer" class="w-24 h-24 bg-gray-50 rounded-2xl mb-4 overflow-hidden border border-gray-100 shadow-inner flex items-center justify-center">
+                    <img id="prendaDetailsImage" class="w-full h-full object-cover hidden">
+                    <i id="prendaDetailsNoImage" class="bi bi-image text-gray-200 text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic" id="prendaDetailsName"></h3>
+                <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-2" id="prendaDetailsId"></p>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Descripción</p>
+                        <p class="text-sm text-gray-700 leading-relaxed" id="prendaDetailsDescription"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Local</p>
+                        <p class="text-sm font-black text-[#125f58]" id="prendaDetailsLocal"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Responsable</p>
+                        <p class="text-sm font-black text-gray-700" id="prendaDetailsOwner"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Talla y Material</p>
+                        <div class="flex gap-2">
+                            <span id="prendaDetailsTalla" class="px-2 py-1 bg-gray-100 rounded-lg text-[9px] font-black text-gray-600 uppercase"></span>
+                            <span id="prendaDetailsMaterial" class="px-2 py-1 bg-gray-100 rounded-lg text-[9px] font-black text-gray-600 uppercase"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Stock Disponible</p>
+                        <p class="text-sm font-black" id="prendaDetailsStock"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Precio Unitario</p>
+                        <p class="text-sm font-black text-[#125f58]" id="prendaDetailsPrecio"></p>
+                    </div>
+                </div>
+                <div class="flex justify-center pt-4">
+                    <button type="button" onclick="closePrendaDetailsModal()" class="w-full py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-2xl transition-all border border-gray-100">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE ELIMINACIÓN PREMIUM -->
     <div id="deleteModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
         <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
@@ -507,7 +710,7 @@
             <div class="bg-gray-50/50 p-6">
                 <form id="deleteForm" method="POST" class="w-full">
                     {% csrf_token %}
-                    <input type="hidden" name="user_id" id="deleteUserId">
+                    <input type="hidden" id="deleteTargetId">
                     <input type="hidden" name="accion" value="eliminar">
                     <!-- CAMPO MOTIVO LOCAL (DEBE ESTAR DENTRO DEL FORM PARA ENVIARSE) -->
                     <div id="motivoDeleteContainer" class="mt-2 mb-6 hidden text-left">
@@ -563,7 +766,8 @@
 
         // Control de Modal Eliminar
         function openDeleteModal(id, name) {
-            document.getElementById('deleteUserId').value = id;
+            document.getElementById('deleteTargetId').value = id;
+            document.getElementById('deleteTargetId').name = 'user_id';
             document.getElementById('deleteUserName').innerText = name;
             document.getElementById('deleteModal').classList.add('modal-active');
         }
@@ -576,8 +780,8 @@
             document.getElementById('motivoDeleteText').removeAttribute('required');
             
             const form = document.getElementById('deleteForm');
-            form.querySelector('input[name="accion"]').value = 'eliminar';
-            document.getElementById('deleteUserId').name = 'user_id';
+            if(form.querySelector('input[name="accion"]')) form.querySelector('input[name="accion"]').value = 'eliminar';
+            document.getElementById('deleteTargetId').name = 'user_id';
         }
 
         // Control de Modal Rol
@@ -601,6 +805,8 @@
         }
 
         // Auto-cierre de notificaciones con Contador (10 segundos para eliminar)
+        let allLocalesData = []; // Declarar aquí para que sea accesible globalmente
+        let allPrendasData = [];
         document.addEventListener('DOMContentLoaded', () => {
             const toasts = document.querySelectorAll('.toast-message');
             toasts.forEach(toast => {
@@ -640,18 +846,63 @@
                 setTimeout(() => toast.remove(), 500);
             }
         }
+        
+        // Populate allLocalesData from Django context
+        {% if section == 'locales' %}
+            allLocalesData = [
+                {% for l in locales %}
+                {
+                    "IdLocal": "{{ l.IdLocal }}",
+                    "Nombre_local": "{{ l.Nombre_local|escapejs }}",
+                    "Ubicacion_direccion": "{{ l.Ubicacion_direccion|escapejs }}",
+                    "Descripcion": "{{ l.Descripcion|escapejs }}",
+                    "Numero": "{{ l.Numero|escapejs }}",
+                    "Horaapertura": "{{ l.Horaapertura|time:'H:i' }}",
+                    "HoraCierre": "{{ l.HoraCierre|time:'H:i' }}",
+                    "EstaActivo": {{ l.EstaActivo|lower }},
+                    "IdUsuario_id": "{{ l.IdUsuario.id }}",
+                    "IdUsuario_nombres": "{{ l.IdUsuario.nombres|escapejs }}",
+                    "IdUsuario_apellidos": "{{ l.IdUsuario.apellidos|escapejs }}",
+                    "IdUsuario_pendiente_aceptar_politicas": {{ l.IdUsuario.pendiente_aceptar_politicas|lower }},
+                    "IdUsuario_bloqueado_hasta": "{% if l.IdUsuario.bloqueado_hasta %}{{ l.IdUsuario.bloqueado_hasta|date:'d/m/Y H:i' }}{% else %}null{% endif %}",
+                    "IdUsuario_motivo_bloqueo": "{{ l.IdUsuario.motivo_bloqueo|escapejs }}",
+                    "IdUsuario_is_blocked_now": {% if l.IdUsuario.bloqueado_hasta and l.IdUsuario.bloqueado_hasta > now %}true{% else %}false{% endif %}
+                },
+                {% endfor %}
+            ];
+        {% endif %}
+        
+        {% if section == 'uniformes' %}
+            allPrendasData = [
+                {% for u in uniformes %}
+                {
+                    "id": "{{ u.idPrenda }}",
+                    "nombre": "{{ u.nombre|escapejs }}",
+                    "descripcion": "{{ u.descripcion|escapejs }}",
+                    "precio": "{{ u.precio|floatformat:0 }}",
+                    "stock": {{ u.stock }},
+                    "talla": "{{ u.talla|escapejs }}",
+                    "material": "{{ u.material|escapejs }}",
+                    "tipo": "{{ u.get_tipoPrenda_display|escapejs }}",
+                    "local": "{{ u.idLocal.Nombre_local|escapejs }}",
+                    "vendedor": "{{ u.idLocal.IdUsuario.nombres|escapejs }} {{ u.idLocal.IdUsuario.apellidos|escapejs }}",
+                    "imagen": "{% if u.imagen %}{{ u.imagen.url }}{% endif %}"
+                },
+                {% endfor %}
+            ];
+        {% endif %}
 
 // Modal para cambiar estado de Pedido
 function openOrderModal(id, newState) {
-    document.getElementById('roleUserName').innerText = "Pedido #" + id;
-    document.getElementById('newRoleName').innerText = newState;
-
+    const modal = document.getElementById('roleModal');
     const form = document.getElementById('roleForm');
+    
+    // Limpiar el formulario y establecer los campos ocultos
     form.innerHTML = `
         {% csrf_token %}
         <input type="hidden" name="pedido_id" value="${id}">
-        <input type="hidden" name="nuevo_estado" value="${newState}">
         <input type="hidden" name="accion" value="cancelar_pedido">
+        <input type="hidden" name="nuevo_estado" value="${newState}">
         <div class="mb-5 text-left">
             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">
                 Motivo de la cancelación <span class="text-rose-500">*</span>
@@ -670,16 +921,120 @@ function openOrderModal(id, newState) {
             </button>
         </div>
     `;
-    document.getElementById('roleModal').classList.add('modal-active');
+    // Actualizar el título y texto del modal de rol para que coincida con la acción de pedido
+    document.getElementById('roleUserName').innerText = `Pedido #${id}`;
+    document.getElementById('newRoleName').innerText = `a ${newState}`;
+    modal.classList.add('modal-active');
+}
+
+// Modal de Detalles del Local
+function openLocalDetailsModal(local_id) {
+    const modal = document.getElementById('localDetailsModal');
+    const local = allLocalesData.find(l => l.IdLocal === local_id);
+
+    if (!local) {
+        console.error("Local no encontrado:", local_id);
+        return;
+    }
+
+    document.getElementById('localDetailsName').innerText = local.Nombre_local;
+    document.getElementById('localDetailsAddress').innerText = local.Ubicacion_direccion;
+    document.getElementById('localDetailsDescription').innerText = local.Descripcion;
+    document.getElementById('localDetailsOwnerName').innerText = `${local.IdUsuario_nombres} ${local.IdUsuario_apellidos}`;
+    document.getElementById('localDetailsOwnerId').innerText = `ID: ${local.IdUsuario_id}`;
+    document.getElementById('localDetailsContact').innerText = local.Numero;
+    document.getElementById('localDetailsHours').innerText = `${local.Horaapertura} - ${local.HoraCierre}`;
+
+    // Estado del Local
+    const localStatusSpan = document.getElementById('localDetailsStatus');
+    if (local.EstaActivo) {
+        localStatusSpan.className = 'px-3 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-600';
+        localStatusSpan.innerText = 'Activo';
+    } else {
+        localStatusSpan.className = 'px-3 py-1 rounded-full text-[9px] font-black uppercase bg-yellow-100 text-yellow-600';
+        localStatusSpan.innerText = 'Inactivo';
+    }
+
+    // Estado del Vendedor
+    const userStatusDiv = document.getElementById('localDetailsUserStatus');
+    userStatusDiv.innerHTML = ''; // Limpiar contenido previo
+    if (local.IdUsuario_pendiente_aceptar_politicas) {
+        userStatusDiv.innerHTML = `
+            <span class="px-2 py-1 rounded-md text-[8px] font-black uppercase bg-orange-100 text-orange-600" title="Debe aceptar políticas tras sanción">
+                Sanción Pend.
+            </span>
+        `;
+    } else if (local.IdUsuario_is_blocked_now) {
+        const razon = local.IdUsuario_motivo_bloqueo || 'No especificado';
+        userStatusDiv.innerHTML = `
+            <div class="flex flex-col" title="Motivo: ${razon}">
+                <span class="w-fit px-2 py-0.5 rounded-md text-[8px] font-black uppercase bg-rose-100 text-rose-600 mb-0.5">
+                    Bloqueado
+                </span>
+                <span class="text-[8px] text-gray-400 font-bold whitespace-nowrap">
+                    <i class="bi bi-clock"></i> ${local.IdUsuario_bloqueado_hasta !== 'null' ? local.IdUsuario_bloqueado_hasta : ''}
+                </span>
+            </div>
+        `;
+    } else {
+        userStatusDiv.innerHTML = `
+            <span class="px-2 py-1 rounded-md text-[8px] font-black uppercase bg-emerald-100 text-emerald-600">Activo</span>
+        `;
+    }
+
+    modal.classList.add('modal-active');
+}
+
+function openPrendaDetailsModal(id) {
+    const modal = document.getElementById('prendaDetailsModal');
+    const prenda = allPrendasData.find(p => p.id === id);
+
+    if (!prenda) return;
+
+    document.getElementById('prendaDetailsName').innerText = prenda.nombre;
+    document.getElementById('prendaDetailsId').innerText = `Referencia: #UNISENA-${prenda.id}`;
+    document.getElementById('prendaDetailsDescription').innerText = prenda.descripcion || "Sin descripción disponible.";
+    document.getElementById('prendaDetailsLocal').innerText = prenda.local;
+    document.getElementById('prendaDetailsOwner').innerText = prenda.vendedor;
+    document.getElementById('prendaDetailsTalla').innerText = `Talla ${prenda.talla}`;
+    document.getElementById('prendaDetailsMaterial').innerText = prenda.material;
+    
+    const stockEl = document.getElementById('prendaDetailsStock');
+    stockEl.innerText = `${prenda.stock} unidades`;
+    stockEl.className = prenda.stock <= 5 ? "text-sm font-black text-rose-500 animate-pulse" : "text-sm font-black text-gray-800";
+    
+    document.getElementById('prendaDetailsPrecio').innerText = `$${prenda.precio} COP`;
+
+    const img = document.getElementById('prendaDetailsImage');
+    const noImg = document.getElementById('prendaDetailsNoImage');
+    if (prenda.imagen) {
+        img.src = prenda.imagen;
+        img.classList.remove('hidden');
+        noImg.classList.add('hidden');
+    } else {
+        img.classList.add('hidden');
+        noImg.classList.remove('hidden');
+    }
+
+    modal.classList.add('modal-active');
+}
+
+function closePrendaDetailsModal() {
+    document.getElementById('prendaDetailsModal').classList.remove('modal-active');
+}
+
+function closeLocalDetailsModal() {
+    document.getElementById('localDetailsModal').classList.remove('modal-active');
 }
 
 // Modal para eliminar local
 function openDeleteLocalModal(id, name) {
-    document.getElementById('deleteUserId').value = id;
+    const target = document.getElementById('deleteTargetId');
+    target.name = 'local_id';
+    target.value = id;
     document.getElementById('deleteUserName').innerText = name;
     const form = document.getElementById('deleteForm');
-    form.querySelector('input[name="accion"]').value = 'eliminar_local';
-    form.querySelector('input[name="user_id"]').name = 'local_id';
+    if(form.querySelector('input[name="accion"]')) form.querySelector('input[name="accion"]').value = 'eliminar_local';
 
     // Mostrar motivo solo para locales
     document.getElementById('motivoDeleteContainer').classList.remove('hidden');
@@ -690,11 +1045,12 @@ function openDeleteLocalModal(id, name) {
 
 // Modal para eliminar prenda (Uniforme)
 function openDeletePrendaModal(id, name) {
-    document.getElementById('deleteUserId').value = id;
+    const target = document.getElementById('deleteTargetId');
+    target.name = 'prenda_id';
+    target.value = id;
     document.getElementById('deleteUserName').innerText = name;
     const form = document.getElementById('deleteForm');
-    form.querySelector('input[name="accion"]').value = 'eliminar_prenda';
-    form.querySelector('input[name="user_id"]').name = 'prenda_id';
+    if(form.querySelector('input[name="accion"]')) form.querySelector('input[name="accion"]').value = 'eliminar_prenda';
 
     // Mostrar motivo para uniformes
     document.getElementById('motivoDeleteContainer').classList.remove('hidden');
@@ -702,6 +1058,71 @@ function openDeletePrendaModal(id, name) {
     document.getElementById('motivoDeleteText').placeholder = "Ej: Incumplimiento de políticas de calidad...";
 
     document.getElementById('deleteModal').classList.add('modal-active');
+}
+
+// Modal para bloquear usuario desde comentario
+function openBlockModerationModal(comId, userName) {
+    const modal = document.getElementById('deleteModal');
+    document.getElementById('deleteUserName').innerText = userName;
+    const form = document.getElementById('deleteForm');
+    form.innerHTML = `
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="bloquear_usuario_moderacion">
+        <input type="hidden" name="comentario_id" value="${comId}">
+        <div class="mb-6">
+            <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Selecciona Plazo de Bloqueo:</label>
+            <select name="plazo_bloqueo" class="w-full p-4 bg-gray-100 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-[#125f58]/20">
+                <option value="30s">30 Segundos (Testing)</option>
+                <option value="1d">1 Día</option>
+                <option value="3d">3 Días</option>
+                <option value="1w">1 Semana</option>
+                <option value="1m">1 Mes</option>
+                <option value="perm">Bloqueo Permanente y Eliminación</option>
+            </select>
+        </div>
+        <div class="flex gap-3">
+            <button type="button" onclick="closeDeleteModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">
+                Cancelar
+            </button>
+            <button type="submit" class="flex-1 py-3 bg-rose-500 text-white rounded-xl text-[10px] font-black shadow-lg shadow-rose-500/20">CONFIRMAR BLOQUEO</button>
+        </div>
+    `;
+    modal.classList.add('modal-active');
+}
+
+// Modal genérico para bloquear usuario (Usado en Locales)
+function openBlockUserModal(userId, userName) {
+    // Primero cerramos el modal de detalles si está abierto para evitar conflictos de UI
+    closeLocalDetailsModal();
+
+    const modal = document.getElementById('deleteModal');
+    document.getElementById('deleteUserName').innerText = userName;
+    const form = document.getElementById('deleteForm');
+    form.innerHTML = ` <!-- Re-render the form content -->
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="bloquear_usuario">
+        <input type="hidden" name="user_id" value="${userId}">
+        <div class="mb-4 text-left">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Motivo de la sanción:</label>
+            <textarea name="motivo" required class="w-full p-4 bg-gray-50 rounded-[1.5rem] border-2 border-transparent focus:border-[#125f58]/10 outline-none text-xs font-bold text-gray-600 resize-none" rows="2" placeholder="Ej: Venta de productos no autorizados..."></textarea>
+        </div>
+        <div class="mb-6">
+            <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Selecciona Plazo de Bloqueo:</label>
+            <select name="plazo_bloqueo" class="w-full p-4 bg-gray-100 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-[#125f58]/20">
+                <option value="30s">30 Segundos (Prueba)</option>
+                <option value="1d">1 Día</option>
+                <option value="3d">3 Días</option>
+                <option value="1w">1 Semana</option>
+                <option value="1m">1 Mes</option>
+                <option value="perm">Bloqueo Permanente</option>
+            </select>
+        </div>
+        <div class="flex gap-3">
+            <button type="button" onclick="closeDeleteModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+            <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">CONFIRMAR BLOQUEO</button>
+        </div>
+    `;
+    modal.classList.add('modal-active');
 }
 
     </script>

@@ -36,6 +36,9 @@ class Usuario(models.Model):
     reset_codigo = models.CharField(max_length=6, null=True, blank=True)
     reset_codigo_fecha = models.DateTimeField(null=True, blank=True)
     reset_intentos = models.IntegerField(default=0)
+    bloqueado_hasta = models.DateTimeField(null=True, blank=True)
+    motivo_bloqueo = models.TextField(null=True, blank=True)
+    pendiente_aceptar_politicas = models.BooleanField(default=False)
     
     def save(self, *args, **kwargs):
 

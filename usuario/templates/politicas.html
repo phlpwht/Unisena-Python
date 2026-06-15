@@ -25,11 +25,33 @@
     </header>
 
     <main class="max-w-6xl mx-auto px-6 py-16">
+        {% if usuario_bloqueado %}
+        <div class="fixed inset-0 z-[9999] bg-gray-900/95 backdrop-blur-xl flex items-center justify-center p-6">
+            <div class="bg-white rounded-[3rem] p-10 max-w-lg text-center shadow-2xl">
+                <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="bi bi-shield-lock-fill text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-black text-gray-800 uppercase tracking-tighter mb-4 italic">Cuenta Restringida</h2>
+                
+                {% if msg_bloqueo == "politicas" %}
+                    <p class="text-gray-500 text-sm mb-8 leading-relaxed">Tu periodo de suspensión ha terminado. Para continuar navegando y comprando en UniSena, debes aceptar nuestras políticas de convivencia y privacidad nuevamente.</p>
+                    <form action="{% url 'aceptar_politicas' %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full py-4 bg-[#125f58] text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-[#0d4742] transition-all active:scale-95">Aceptar Políticas y Privacidad</button>
+                    </form>
+                {% else %}
+                    <p class="text-gray-500 text-sm mb-8 leading-relaxed">{{ msg_bloqueo }}</p>
+                    <a href="{% url 'logout' %}" class="inline-block text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-rose-500 transition-colors underline">Cerrar Sesión</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="hidden"> {# Hide main content when blocked #}
+        {% endif %}
         
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
             
             <!-- SECCIÓN: QUÉ HACER (DOS) -->
-            <div class="space-y-8 animate-slide-up" style="animation-delay: 100ms;">
+            <div class="space-y-8 animate-slide-up" style="animation-delay: 100ms;"> 
                 <div class="flex items-center gap-4 mb-6">
                     <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
                         <i class="bi bi-check-circle-fill text-2xl"></i>
@@ -54,7 +76,7 @@
             </div>
 
             <!-- SECCIÓN: QUÉ NO HACER (DON'TS) -->
-            <div class="space-y-8 animate-slide-up" style="animation-delay: 200ms;">
+            <div class="space-y-8 animate-slide-up" style="animation-delay: 200ms;"> 
                 <div class="flex items-center gap-4 mb-6">
                     <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center shadow-lg">
                         <i class="bi bi-x-circle-fill text-2xl"></i>
@@ -103,6 +125,9 @@
                 <i class="bi bi-arrow-left"></i> Entendido, volver al inicio
             </a>
         </div>
+        {% if usuario_bloqueado %}
+        </div> {# End of hidden div #}
+        {% endif %}
     </main>
 
     <footer class="py-12 border-t border-gray-100 text-center">

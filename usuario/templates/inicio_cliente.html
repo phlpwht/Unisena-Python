@@ -7,7 +7,7 @@
 
     <link rel="icon" type="image/png" href="{% static 'img/unison.png' %}">
 
-    <!-- ✅ Tailwind -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Icons -->
@@ -73,7 +73,7 @@
   </head>
 
   <body class="font-sans">
-    <!-- ✅ MENSAJES (Para ver alertas de carrito) -->
+    <!--MENSAJES (Para ver alertas de carrito) -->
     {% if messages %}
     <div id="mensaje-container" class="fixed inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none">
       {% for message in messages %}
@@ -262,7 +262,7 @@
     <!-- 🛍️ PRODUCTOS -->
     <section class="max-w-5xl mx-auto px-6 py-12">
 
-      <!-- 📦 ALERTA PEDIDO PENDIENTE (REUBICADO) -->
+      <!--ALERTA PEDIDO PENDIENTE (REUBICADO) -->
       {% if pedidos_pendientes_count > 0 %}
       <div class="mb-10">
           <div class="bg-orange-50 border-l-[6px] border-orange-500 p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4 animate-fade-in">
@@ -349,6 +349,7 @@
       </div>
     </footer>
 
+
     <!-- 🔥 JS -->
     <script>
       function marcarLeida(id) {
@@ -409,7 +410,7 @@
         {% endfor %}
       ];
 
-      console.log('Pool de Prendas:', poolPrendas); // ✅ VERIFICA ESTO EN LA CONSOLA DEL NAVEGADOR
+      console.log('Pool de Prendas:', poolPrendas); // VERIFICA ESTO EN LA CONSOLA DEL NAVEGADOR
 
       let tiempoRestante = 30;
       const usuarioRol = "{{ request.session.usuario_rol }}";

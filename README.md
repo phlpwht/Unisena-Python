@@ -73,7 +73,7 @@ Antes de comenzar, asegúrate de tener instalado:
    python manage.py runserver
    ```
 
-## 📦 Estructura del Proyecto
+## Estructura del Proyecto
 
 - `usuario/`: Manejo de perfiles, roles, señales y autenticación.
 - `locales/`: Gestión de tiendas y vistas para vendedores.

@@ -57,14 +57,27 @@
                 {% else %}
                 <form id="statusForm" action="{% url 'detalle_pedido_vendedor' local.IdLocal pedido.idPedido %}" method="POST" class="space-y-3 no-print">
                     {% csrf_token %}
-                    <select name="nuevo_estado" id="statusSelect" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#125f58]">
+                    <select name="nuevo_estado" id="statusSelect" 
+                        {% if pedido.estado.estado_pedido == 'COMPLETADO' or pedido.estado.estado_pedido == 'CANCELADO' %}disabled{% endif %}
+                        class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#125f58] disabled:opacity-50 disabled:cursor-not-allowed">
                         {% for val, label in estados_pedido %}
-                        <option value="{{ val }}" class="text-gray-800" {% if pedido.estado.estado_pedido|upper == val|upper %}selected{% endif %}>
-                            {{ label }}
-                        </option>
+                            {% if pedido.estado.estado_pedido == 'En Proceso' %}
+                                {% if val == 'En Proceso' or val == 'COMPLETADO' or val == 'CANCELADO' %}
+                                    <option value="{{ val }}" class="text-gray-800" {% if pedido.estado.estado_pedido == val %}selected{% endif %}>{{ label }}</option>
+                                {% endif %}
+                            {% elif pedido.estado.estado_pedido == 'PENDIENTE' %}
+                                <option value="{{ val }}" class="text-gray-800" {% if pedido.estado.estado_pedido == val %}selected{% endif %}>{{ label }}</option>
+                            {% else %}
+                                {# Estado final: Solo mostramos el actual pero deshabilitado arriba #}
+                                {% if pedido.estado.estado_pedido == val %}
+                                    <option value="{{ val }}" class="text-gray-800" selected>{{ label }}</option>
+                                {% endif %}
+                            {% endif %}
                         {% endfor %}
                     </select>
-                    <button type="button" onclick="validateStatusChange()" class="w-full bg-[#125f58] hover:bg-[#0d4742] text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-lg">
+                    <button type="button" onclick="validateStatusChange()" 
+                        {% if pedido.estado.estado_pedido == 'COMPLETADO' or pedido.estado.estado_pedido == 'CANCELADO' %}disabled{% endif %}
+                        class="w-full bg-[#125f58] hover:bg-[#0d4742] text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                         Actualizar
                     </button>
                 </form>
@@ -177,16 +190,44 @@
         </div>
     </div>
 
+    <!-- MODAL DE CONFIRMACIÓN DE CAMBIO DE ESTADO -->
+    <div id="statusChangeConfirmModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="bi bi-exclamation-circle-fill text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">Confirmar Cambio de Estado</h3>
+                <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">
+                    Estás a punto de cambiar el estado del pedido a <span id="newStatusDisplay" class="text-gray-700 font-black"></span>.
+                    <br>Esta acción es irreversible.
+                </p>
+            </div>
+            <div class="bg-gray-50/50 p-6">
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeStatusChangeConfirmModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+                    <button type="button" onclick="submitStatusForm()" class="flex-1 py-3 bg-[#125f58] text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#125f58]/20 hover:bg-[#0d4742] transition-all active:scale-95">
+                        Confirmar Cambio
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function validateStatusChange() {
             const select = document.getElementById('statusSelect');
             const form = document.getElementById('statusForm');
             
+            const currentStatus = "{{ pedido.estado.estado_pedido|escapejs }}";
+            if (select.value === currentStatus) return; // No hay cambios reales
+
             if (select.value === 'CANCELADO') {
                 openCancelModal();
             } else {
-                form.submit();
+                openStatusChangeConfirmModal(select.value);
             }
+
         }
 
         function openCancelModal() {
@@ -204,6 +245,30 @@
                     break;
                 }
             }
+        }
+
+        function openStatusChangeConfirmModal(newState) {
+            const modal = document.getElementById('statusChangeConfirmModal');
+            document.getElementById('newStatusDisplay').innerText = newState;
+            modal.classList.add('modal-active');
+        }
+
+        function closeStatusChangeConfirmModal() {
+            const modal = document.getElementById('statusChangeConfirmModal');
+            modal.classList.remove('modal-active');
+            // Restaurar el selector al valor actual del pedido si el usuario cancela
+            const select = document.getElementById('statusSelect');
+            const currentStatus = "{{ pedido.estado.estado_pedido|escapejs }}";
+            for(let i=0; i<select.options.length; i++) {
+                if(select.options[i].value === currentStatus) {
+                    select.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        function submitStatusForm() {
+            document.getElementById('statusForm').submit();
         }
     </script>
 </body>

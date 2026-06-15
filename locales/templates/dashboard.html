@@ -39,7 +39,7 @@
           href="{% url 'landing' %}"
           class="bg-white/90 backdrop-blur text-[#125f58] px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-white transition-all flex items-center gap-2"
         >
-          <- Inicio
+          Inicio
         </a>
         {% if puede_crear %}
         <a
@@ -47,7 +47,7 @@
           id="btnCrear"
           class="bg-white/90 backdrop-blur text-[#125f58] px-6 py-2.5 rounded-xl font-bold shadow-lg hover:bg-white transition-all flex items-center gap-2"
         >
-          ➕ Crear Local
+          Crear Local
         </a>
         {% endif %}
 
@@ -161,7 +161,7 @@
         }
       }, 150);
 
-      // 📊 barra
+      // barra
       let porcentaje = (total / max) * 100;
       barra.style.width = porcentaje + "%";
 
@@ -179,10 +179,10 @@
         if (boton) boton.style.display = "none";
         if (botonCard) botonCard.style.display = "none";
 
-        mensaje.innerHTML = "Ya alcanzaste el máximo de 3 locales ❌";
+        mensaje.innerHTML = "Ya alcanzaste el máximo de 3 locales";
         mensaje.classList.add("text-red-500");
       } else {
-        mensaje.innerHTML = "Recuerda que puedes crear máximo 3 locales 📍";
+        mensaje.innerHTML = "Recuerda que puedes crear máximo 3 locales";
       }
     </script>
   </body>

@@ -49,6 +49,15 @@
                             <span class="text-[8px] bg-[#125f58]/5 px-3 py-1 rounded-lg text-[#125f58] font-black uppercase tracking-widest">{{ detalle.prenda.get_tipoPrenda_display }}</span>
                             <span class="text-[8px] font-black text-gray-300 uppercase self-center ml-2">Cant: x{{ detalle.cantidad }}</span>
                         </div>
+                        {% if detalle.prenda.idLocal.Numero %}
+                        <div class="mt-4 no-print">
+                            <a href="https://wa.me/57{{ detalle.prenda.idLocal.Numero }}?text=Hola%2C%20he%20hecho%20un%20pedido%20en%20tu%20local%20*{{ detalle.prenda.idLocal.Nombre_local|urlencode }}*%20con%20este%20uniforme%3A%0A%0A*Producto%3A*%20{{ detalle.prenda.nombre|urlencode }}%0A*Cantidad%3A*%20{{ detalle.cantidad }}%0A*Talla%3A*%20{{ detalle.talla|urlencode }}%0A*Tipo%3A*%20{{ detalle.prenda.get_tipoPrenda_display|urlencode }}%0A*Material%3A*%20{{ detalle.prenda.material|urlencode }}" 
+                               target="_blank" 
+                               class="inline-flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 transition shadow-md shadow-emerald-500/10">
+                                <i class="bi bi-whatsapp text-sm"></i> Contactar Local
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
                     <div class="text-right">
                         <p class="font-black text-gray-800 text-lg tracking-tighter">${{ detalle.total_pedido|floatformat:0 }}</p>

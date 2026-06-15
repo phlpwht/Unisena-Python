@@ -1,4 +1,4 @@
-import os, json, re
+import os, json, re, time, datetime
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from .models import Prendas, Pedido, DetallePedido, EstadoPedido
@@ -11,7 +11,8 @@ import io
 from django.http import JsonResponse
 from django.urls import reverse
 from django.core.files import File
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Q
+from django.utils.timezone import now
 from inventario.models import MovimientoInventario
 from .models import CalificacionPedido
 from locales.models import Notificacion
@@ -36,36 +37,40 @@ def crear_prenda(request, id_local):
 
         # Validación de longitud (Modelo: 100)
         if len(nombre) > 100:
-            errores.append("❌ El nombre es demasiado largo (máx 100)")
+            errores.append("El nombre es demasiado largo (máx 100)")
 
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
-            errores.append("❌ El nombre solo puede contener letras, números y espacios")
+            errores.append("El nombre solo puede contener letras, números y espacios")
         
         if Prendas.objects.filter(idLocal__IdUsuario_id=usuario_id, nombre__iexact=nombre).exists():
-            errores.append(f"❌ Ya tienes un uniforme registrado con el nombre '{nombre}'")
+            errores.append(f"Ya tienes un uniforme registrado con el nombre '{nombre}'")
 
         if len(descripcion) > 500:
-            errores.append("❌ La descripción es demasiado larga (máx 500)")
+            errores.append("La descripción es demasiado larga (máx 500)")
 
         # Validación de imagen
         if not imagen:
-            errores.append("❌ La imagen es obligatoria")
+            errores.append("La imagen es obligatoria")
+        else:
+            ext = os.path.splitext(imagen.name)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                errores.append("El archivo seleccionado no es una imagen válida (JPG, PNG, WEBP)")
 
         # Validación de precio
         try:
             precio_decimal = Decimal(precio)
             if precio_decimal <= 0 or precio_decimal > 500000:
-                errores.append("❌ El precio debe estar entre 1 y 500,000 COP 💰")
+                errores.append("El precio debe estar entre 1 y 500,000 COP")
         except:
-            errores.append("❌ Precio inválido")
+            errores.append("Precio inválido")
 
         # Validación de stock
         try:
             stock_int = int(stock)
             if stock_int < 0 or stock_int > 1000:
-                errores.append("❌ El stock debe estar entre 0 y 1000 unidades 📦")
+                errores.append("El stock debe estar entre 0 y 1000 unidades")
         except:
-            errores.append("❌ Stock inválido")
+            errores.append("Stock inválido")
 
         if errores:
             for error in errores:
@@ -104,10 +109,10 @@ def crear_prenda(request, id_local):
                 cantidad=stock_int
             )
 
-            messages.success(request, "✅ Prenda creada correctamente")
+            messages.success(request, "Prenda creada correctamente")
             return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
         except Exception as e:
-            messages.error(request, f"❌ Error al crear prenda: {e}")
+            messages.error(request, f"Error al crear prenda: {e}")
             prendas = Prendas.objects.filter(idLocal=local)
             return render(request, "detallelocal.html", {
                 "local": local,
@@ -143,36 +148,40 @@ def editar_prenda(request, id_prenda):
 
         # Validación de longitud (Modelo: 100)
         if len(nombre) > 100:
-            errores.append("❌ El nombre es demasiado largo (máx 100)")
+            errores.append("El nombre es demasiado largo (máx 100)")
 
         if not re.match(r'^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$', nombre):
-            errores.append("❌ El nombre solo puede contener letras, números y espacios")
+            errores.append("El nombre solo puede contener letras, números y espacios")
         
         if Prendas.objects.filter(idLocal__IdUsuario_id=usuario_id, nombre__iexact=nombre).exclude(pk=id_prenda).exists():
-            errores.append(f"❌ Ya tienes otro uniforme con el nombre '{nombre}'")
+            errores.append(f"Ya tienes otro uniforme con el nombre '{nombre}'")
 
         if len(descripcion) > 500:
-            errores.append("❌ La descripción es demasiado larga (máx 500)")
+            errores.append("La descripción es demasiado larga (máx 500)")
 
         # Validación de precio
         try:
             precio_decimal = Decimal(precio)
             if precio_decimal <= 0 or precio_decimal > 500000:
-                errores.append("❌ El precio debe estar entre 1 y 500,000 COP 💰")
+                errores.append("El precio debe estar entre 1 y 500,000 COP")
         except:
-            errores.append("❌ Precio inválido")
+            errores.append("Precio inválido")
 
         # Validación de stock
         try:
             stock_int = int(stock)
             if stock_int < 0 or stock_int > 1000:
-                errores.append("❌ El stock debe estar entre 0 y 1000 unidades 📦")
+                errores.append("El stock debe estar entre 0 y 1000 unidades")
         except:
-            errores.append("❌ Stock inválido")
+            errores.append("Stock inválido")
 
         # Validación de imagen solo si no tiene imagen previa
-        if not prenda.imagen and not imagen:
-            errores.append("❌ La imagen es obligatoria")
+        if imagen:
+            ext = os.path.splitext(imagen.name)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                errores.append("El archivo seleccionado no es una imagen válida (JPG, PNG, WEBP)")
+        elif not prenda.imagen:
+             errores.append("La imagen es obligatoria")
 
         if errores:
             for error in errores:
@@ -217,10 +226,10 @@ def editar_prenda(request, id_prenda):
 
         try:
             prenda.save()
-            messages.success(request, "Prenda editada correctamente ✨")
+            messages.success(request, "Prenda editada correctamente.")
             return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
         except Exception as e:
-            messages.error(request, f"❌ Error al editar prenda: {e}")
+            messages.error(request, f"Error al editar prenda: {e}")
             prendas = Prendas.objects.filter(idLocal=local)
             return render(request, "detallelocal.html", {
                 "local": local,
@@ -245,7 +254,10 @@ def eliminar_prenda(request, id_prenda):
 
     try:
         if request.method == "POST":
-            cantidad_eliminar = int(request.POST.get('cantidad_eliminar', 0))
+            try:
+                cantidad_eliminar = int(request.POST.get('cantidad_eliminar') or 0)
+            except (ValueError, TypeError):
+                cantidad_eliminar = 0
 
             # 🚨 VALIDACIÓN: Verificar unidades comprometidas en pedidos activos
             unidades_reservadas = DetallePedido.objects.filter(
@@ -256,17 +268,17 @@ def eliminar_prenda(request, id_prenda):
             if cantidad_eliminar == 0 or cantidad_eliminar >= prenda.stock:
                 # Eliminación lógica: ponemos stock en 0 y desactivamos
                 if unidades_reservadas > 0:
-                    messages.error(request, f"❌ No se puede eliminar el producto: hay {unidades_reservadas} unidades reservadas en pedidos pendientes.")
+                    messages.error(request, f"No se puede eliminar el producto: hay {unidades_reservadas} unidades reservadas en pedidos pendientes.")
                     return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
                 
                 prenda.stock = 0
                 prenda.activo = False
                 prenda.save()
-                messages.success(request, "✅ Producto eliminado del inventario por falta de stock.")
+                messages.success(request, "Producto eliminado del inventario por falta de stock.")
             elif cantidad_eliminar > 0:
                 # Eliminación parcial (ajuste de stock)
                 if (prenda.stock - cantidad_eliminar) < unidades_reservadas:
-                    messages.error(request, f"⚠️ No puedes retirar {cantidad_eliminar} unidades. Debes dejar al menos {unidades_reservadas} para cubrir pedidos pendientes.")
+                    messages.error(request, f"No puedes retirar {cantidad_eliminar} unidades. Debes dejar al menos {unidades_reservadas} para cubrir pedidos pendientes.")
                     return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
 
                 prenda.stock -= cantidad_eliminar
@@ -282,17 +294,17 @@ def eliminar_prenda(request, id_prenda):
                     cantidad=cantidad_eliminar
                 )
 
-                messages.success(request, f"✅ Se eliminaron {cantidad_eliminar} unidades del stock.")
+                messages.success(request, f"Se eliminaron {cantidad_eliminar} unidades del stock.")
             else:
                 # Eliminación lógica por defecto
                 prenda.stock = 0
                 prenda.activo = False
                 prenda.save()
-                messages.success(request, "✅ Prenda eliminada correctamente")
+                messages.success(request, "Prenda eliminada correctamente")
         else:
             return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
     except Exception as e:
-        messages.error(request, f"❌ Error al eliminar la prenda: {e}")
+        messages.error(request, f"Error al eliminar la prenda: {e}")
 
     return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
 
@@ -305,12 +317,12 @@ def bulk_upload_prendas(request, id_local):
 
     if request.method == 'POST':
         if 'file' not in request.FILES:
-            messages.error(request, "❌ No se ha seleccionado ningún archivo.")
+            messages.error(request, "No se ha seleccionado ningún archivo.")
             return render(request, 'bulk_upload_form.html', {'local': local})
 
         file = request.FILES['file']
         if not file.name.endswith(('.csv', '.xlsx')):
-            messages.error(request, "❌ Formato de archivo no válido. Solo se permiten .csv o .xlsx.")
+            messages.error(request, "Formato de archivo no válido. Solo se permiten .csv o .xlsx.")
             return render(request, 'bulk_upload_form.html', {'local': local})
 
         try:
@@ -322,7 +334,7 @@ def bulk_upload_prendas(request, id_local):
             # Columnas esperadas (asegúrate de que coincidan con tu modelo)
             expected_columns = ['nombre', 'descripcion', 'precio', 'stock', 'talla', 'material', 'tipoPrenda']
             if not all(col in df.columns for col in expected_columns):
-                messages.error(request, f"❌ El archivo debe contener las columnas: {', '.join(expected_columns)}")
+                messages.error(request, f"El archivo debe contener las columnas: {', '.join(expected_columns)}")
                 return render(request, 'bulk_upload_form.html', {'local': local})
 
             prendas_creadas = 0
@@ -331,7 +343,7 @@ def bulk_upload_prendas(request, id_local):
             for index, row in df.iterrows():
                 try:
                     nombre = str(row['nombre']).strip()
-                    # ✨ Sanitización: Eliminar caracteres especiales automáticamente
+                    # sanitización: Eliminar caracteres especiales automáticamente
                     nombre = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]', '', nombre)
                     
                     descripcion = str(row['descripcion']).strip()
@@ -411,10 +423,10 @@ def bulk_upload_prendas(request, id_local):
                     errores_fila.append(f"Fila {index + 2}: {e}") # +2 porque pandas es 0-indexed y la primera fila es el encabezado
             
             if prendas_creadas > 0:
-                messages.success(request, f"✅ Se crearon {prendas_creadas} prendas correctamente.")
+                messages.success(request, f"Se crearon {prendas_creadas} prendas correctamente.")
             if errores_fila:
                 for error in errores_fila:
-                    messages.error(request, f"⚠️ Error en carga masiva: {error}")
+                    messages.error(request, f"Error en carga masiva: {error}")
                 messages.info(request, "Algunas prendas no pudieron ser creadas. Revisa los errores detallados arriba.")
             
             if prendas_creadas == 0 and not errores_fila:
@@ -423,7 +435,7 @@ def bulk_upload_prendas(request, id_local):
             return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
 
         except Exception as e:
-            messages.error(request, f"❌ Error al procesar el archivo: {e}")
+            messages.error(request, f"Error al procesar el archivo: {e}")
             return render(request, "bulk_upload_form.html", {"local": local})
 
     return render(request, "bulk_upload_form.html", {"local": local})
@@ -439,7 +451,7 @@ def eliminar_prendas_masivo(request, id_local):
     if request.method == "POST":
         ids = request.POST.getlist("prendas_ids")
         if not ids:
-            messages.warning(request, "⚠️ No seleccionaste ninguna prenda.")
+            messages.warning(request, "No seleccionaste ninguna prenda.")
         else:
             try:
                 # Filtrar qué IDs de los seleccionados tienen pedidos pendientes
@@ -454,11 +466,11 @@ def eliminar_prendas_masivo(request, id_local):
                 cant_eliminadas = Prendas.objects.filter(idPrenda__in=ids_a_eliminar, idLocal=local).update(activo=False, stock=0)
                 
                 if len(ids_con_pedidos) > 0:
-                    messages.warning(request, f"⚠️ Se eliminaron {cant_eliminadas} prendas, pero {len(ids_con_pedidos)} no se pudieron borrar por tener pedidos pendientes.")
+                    messages.warning(request, f"Se eliminaron {cant_eliminadas} prendas, pero {len(ids_con_pedidos)} no se pudieron borrar por tener pedidos pendientes.")
                 else:
-                    messages.success(request, f"✅ Se eliminaron {cant_eliminadas} prendas correctamente.")
+                    messages.success(request, f"Se eliminaron {cant_eliminadas} prendas correctamente.")
             except Exception as e:
-                messages.error(request, f"❌ Error al eliminar prendas: {e}")
+                messages.error(request, f"Error al eliminar prendas: {e}")
 
     return redirect(f"{reverse('detalle_local', args=[local.IdLocal])}?inventario=1")
 
@@ -466,6 +478,13 @@ def catalogo_prendas(request):
     nombre = request.session.get("usuario_nombre")
     rol = request.session.get("usuario_rol")
     usuario_id = request.session.get("usuario_id")
+
+    # --- LÓGICA DE BLOQUEO TOTAL ---
+    from usuario.utils import _get_user_block_status
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        return redirect("landing")
+    # -------------------------------
 
     # Solo prendas de locales activos
     prendas_qs = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
@@ -538,6 +557,8 @@ def catalogo_prendas(request):
     return render(request, "cardsuni.html", {
         "nombre": nombre,
         "rol": rol,
+        "usuario_bloqueado": usuario_bloqueado,
+        "msg_bloqueo": msg_bloqueo,
         "page_obj": page_obj,
         "search_prenda": search_prenda,
         "search_local": search_local,
@@ -560,6 +581,21 @@ def detalle_prenda(request, id_prenda):
     prenda = get_object_or_404(Prendas, pk=id_prenda, activo=True)
     recomendados = Prendas.objects.filter(idLocal__EstaActivo=True, activo=True).exclude(pk=id_prenda).order_by('?')[:15]
 
+    usuario_id = request.session.get("usuario_id")
+
+    # --- LÓGICA DE BLOQUEO TOTAL ---
+    from usuario.utils import _get_user_block_status
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        return redirect("landing")
+    # -------------------------------
+
+    # --- LÓGICA DE CALIFICACIONES DEL LOCAL ---
+    calificaciones = CalificacionPedido.objects.filter(locales=prenda.idLocal, esta_visible=True)
+    total_calificaciones = calificaciones.count()
+    promedio_valoracion = calificaciones.aggregate(promedio=models.Avg('valoracion'))['promedio'] or 0
+    promedio_valoracion = round(promedio_valoracion, 1)
+
     # Conteo seguro para Clientes y Anónimos
     cart_count = 0
     if request.session.get("usuario_rol") != "Vendedor":
@@ -569,12 +605,28 @@ def detalle_prenda(request, id_prenda):
         else:
             cart_count = len(carrito) if isinstance(carrito, list) else 0
 
-    return render(request, "detalleuniforme.html", {"prenda": prenda, "recomendados": recomendados, "cart_count": cart_count})
+    return render(request, "detalleuniforme.html", {
+        "prenda": prenda, 
+        "usuario_bloqueado": usuario_bloqueado,
+        "msg_bloqueo": msg_bloqueo,
+        "recomendados": recomendados, 
+        "cart_count": cart_count,
+        "total_calificaciones": total_calificaciones,
+        "promedio_valoracion": promedio_valoracion,
+        "rango_estrellas": range(1, 6),
+    })
 
 def agregar_carrito(request, id_prenda):
     if "usuario_id" not in request.session:
         messages.warning(request, "Debes iniciar sesión para agregar productos al carrito 🔒")
         return redirect('login')
+
+    # --- SEGURIDAD: Bloqueo de acciones si está sancionado ---
+    from usuario.utils import _get_user_block_status
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        messages.error(request, "Tu cuenta está restringida. No puedes agregar productos al carrito.")
+        return redirect('landing')
 
     if request.session.get("usuario_rol") != "Cliente":
         messages.error(request, "Solo los clientes pueden añadir productos al carrito 🚫")
@@ -585,7 +637,11 @@ def agregar_carrito(request, id_prenda):
     if not isinstance(carrito, dict): carrito = {}
 
     id_str = str(id_prenda)
-    cantidad = int(request.POST.get('cantidad', 1))
+    try:
+        cantidad = int(request.POST.get('cantidad') or 1)
+        if cantidad < 1: cantidad = 1
+    except (ValueError, TypeError):
+        cantidad = 1
 
     if id_str in carrito:
         messages.info(request, "Ya tienes este producto en el carrito")
@@ -608,7 +664,7 @@ def eliminar_del_carrito(request, id_prenda):
             carrito.remove(id_prenda)
             
         request.session.modified = True
-        messages.success(request, "Prenda eliminada del carrito correctamente 🗑️")
+        messages.success(request, "Prenda eliminada del carrito correctamente")
     return redirect('ver_carrito')
 
 def actualizar_cantidad_carrito(request, id_prenda):
@@ -641,7 +697,13 @@ def ver_carrito(request):
         return redirect('landing')
     
     usuario_id = request.session.get("usuario_id")
-    from locales.models import Notificacion
+
+    # --- LÓGICA DE BLOQUEO TOTAL ---
+    from usuario.utils import _get_user_block_status
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        return redirect("landing")
+    # -------------------------------
 
     carrito = request.session.get('carrito', {})
     if not isinstance(carrito, dict): 
@@ -683,6 +745,8 @@ def ver_carrito(request):
         })
 
     return render(request, "carrito.html", {
+        "usuario_bloqueado": usuario_bloqueado,
+        "msg_bloqueo": msg_bloqueo,
         "items": items, 
         "total": total_general, 
         "cart_count": sum(carrito.values())
@@ -696,20 +760,21 @@ def procesar_pago(request):
     if request.method == "POST":
         usuario_id = request.session.get("usuario_id")
         carrito = request.session.get('carrito', {})
-        
-        if request.session.get("usuario_rol") == "Vendedor":
-            messages.error(request, "Acceso denegado. Los vendedores no pueden procesar pagos.")
+
+        from usuario.utils import _get_user_block_status
+        usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+        if usuario_bloqueado:
+            messages.error(request, "Tu cuenta está restringida. No puedes realizar pagos.")
             return redirect('landing')
 
         if not carrito:
-            messages.error(request, "El carrito está vacío 🛒")
+            messages.error(request, "El carrito está vacío")
             return redirect('catalogo_prendas')
 
-    
         # 1. Obtener seleccionados del formulario.
         selected_ids = request.POST.getlist('seleccionados')
         if not selected_ids:
-            messages.warning(request, "⚠️ Por favor, selecciona al menos un producto para pagar.")
+            messages.warning(request, "Por favor, selecciona al menos un producto para pagar.")
             return redirect('ver_carrito')
 
 
@@ -749,7 +814,7 @@ def procesar_pago(request):
              # 🚨 VALIDACIÓN: Abono mínimo del 20%
         min_abono_requerido = total_p * Decimal('0.20')
         if abono_total < min_abono_requerido:
-            messages.error(request, f"⚠️ El abono mínimo para esta compra es de COP ${min_abono_requerido:,.0f} (20%).")
+            messages.error(request, f"El abono mínimo para esta compra es de COP ${min_abono_requerido:,.0f} (20%).")
             return redirect('ver_carrito')
 
         # 2. Obtener o crear el estado inicial
@@ -785,7 +850,7 @@ def procesar_pago(request):
                 del carrito[p_id]
         
         request.session.modified = True
-        messages.success(request, "Pedido generado con éxito ✅")
+        messages.success(request, "Pedido generado con éxito")
         return redirect('ver_pedido', id_pedido=nuevo_pedido.idPedido)
     
     return redirect('ver_carrito')
@@ -924,7 +989,10 @@ def mis_pedidos(request):
 
 def explorar_locales(request):
     # Filtramos solo locales activos para los clientes
-    locales_qs = Local.objects.filter(EstaActivo=True).select_related('IdUsuario')
+    locales_qs = Local.objects.filter(EstaActivo=True).select_related('IdUsuario').annotate(
+        promedio_rating=models.Avg('calificacionpedido__valoracion'),
+        total_opiniones=models.Count('calificacionpedido')
+    )
 
     # Filtros
     search_nombre = request.GET.get('nombre', '').strip()
@@ -947,6 +1015,15 @@ def explorar_locales(request):
     if search_apertura:
         locales_qs = locales_qs.filter(Horaapertura__icontains=search_apertura)
 
+    # Filtros rápidos (Chips)
+    sort = request.GET.get('sort', '').strip()
+    if sort == 'rating':
+        locales_qs = locales_qs.order_by('-promedio_rating')
+    elif sort == 'popular':
+        locales_qs = locales_qs.order_by('-total_opiniones')
+    else:
+        locales_qs = locales_qs.order_by('Nombre_local')
+
     # Paginación para 20 locales por página
     paginator = Paginator(locales_qs, 20)
     page_number = request.GET.get('page')
@@ -967,12 +1044,22 @@ def explorar_locales(request):
         "search_ubicacion": search_ubicacion,
         "search_vendedor": search_vendedor,
         "search_apertura": search_apertura,
+        "sort_sel": sort,
+        "total_locales": locales_qs.count(),
         "cart_count": cart_count
     })
 
 def ver_productos_local(request, id_local):
     local = get_object_or_404(Local, IdLocal=id_local, EstaActivo=True)
+    usuario_id = request.session.get("usuario_id")
     
+    # --- LÓGICA DE BLOQUEO TOTAL ---
+    from usuario.utils import _get_user_block_status
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        return redirect("landing")
+    # -------------------------------
+
     prendas_qs = Prendas.objects.filter(idLocal=local, activo=True).select_related('idLocal', 'idLocal__IdUsuario')
 
     # --- FILTROS ---
@@ -1016,8 +1103,25 @@ def ver_productos_local(request, id_local):
         else:
             cart_count = len(carrito) if isinstance(carrito, list) else 0
 
+    # --- LÓGICA DE CALIFICACIONES ---
+    calificaciones = CalificacionPedido.objects.filter(locales=local, esta_visible=True).select_related('usuario').order_by('-fecha')
+    total_calificaciones = calificaciones.count()
+    # Calculamos el promedio automáticamente
+    promedio_valoracion = calificaciones.aggregate(promedio=models.Avg('valoracion'))['promedio'] or 0
+    promedio_valoracion = round(promedio_valoracion, 1)
+    
+    # Verificamos si el usuario actual ya calificó para mostrar el mensaje de "actualizar"
+    mi_calificacion = None
+    ha_comprado = False
+    if usuario_id:
+        mi_calificacion = calificaciones.filter(usuario_id=usuario_id).first()
+        # Nueva Regla: Verificar si tiene pedidos en este local
+        ha_comprado = Pedido.objects.filter(usuario_id=usuario_id, detallepedido__prenda__idLocal=local, estado__estado_pedido='COMPLETADO').exists()
+
     return render(request, "localproduc.html", {
         "local": local,
+        "usuario_bloqueado": usuario_bloqueado,
+        "msg_bloqueo": msg_bloqueo,
         "page_obj": page_obj,
         "search_prenda": search_prenda,
         "talla_sel": talla,
@@ -1028,6 +1132,12 @@ def ver_productos_local(request, id_local):
         "prenda_material_choices": Prendas.MATERIAL_CHOICES,
         "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
         "cart_count": cart_count,
+        "calificaciones": calificaciones[:5], # Solo mostramos las últimas 5
+        "total_calificaciones": total_calificaciones,
+        "promedio_valoracion": promedio_valoracion,
+        "mi_calificacion": mi_calificacion,
+        "ha_comprado": ha_comprado,
+        "rango_estrellas": range(1, 6), # Útil para pintar las estrellas en el HTML
     })
 
 def actualizar_fecha_entrega(request, id_pedido):
@@ -1049,16 +1159,107 @@ def calificar_local(request, id_local):
         messages.error(request, "Solo los clientes pueden calificar locales 🚫")
         return redirect(request.META.get('HTTP_REFERER', 'landing'))
 
+    # --- SEGURIDAD: Bloqueo de acciones ---
+    from usuario.utils import _get_user_block_status
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        messages.error(request, "Tu cuenta está restringida. No puedes calificar locales.")
+        return redirect('landing')
+
     if request.method == "POST":
         local = get_object_or_404(Local, IdLocal=id_local)
-        comentario = request.POST.get("comentario")
+        comentario = request.POST.get("comentario", "").strip()
         valoracion = request.POST.get("valoracion")
+        usuario_id = request.session.get("usuario_id")
+
+        # 🛡️ PROTECCIÓN ANTI-SPAM (30 segundos entre intentos)
+        last_rating_time = request.session.get('last_rating_time', 0)
+        current_time = time.time()
+        if current_time - last_rating_time < 30:
+            messages.error(request, "¡Ey, detente! Estás intentando calificar demasiado rápido. Por favor, espera un momento.")
+            return redirect(request.META.get('HTTP_REFERER', reverse('ver_productos_local', args=[id_local])))
+
+        # 1. Validación: Comentario obligatorio
+        if not comentario or len(comentario) < 5:
+            messages.error(request, "Debes escribir un comentario con tu opinión (mínimo 5 caracteres).")
+            return redirect(request.META.get('HTTP_REFERER', reverse('ver_productos_local', args=[id_local])))
+
+        # 2. Moderación (Lista de palabras prohibidas)
+        palabras_prohibidas = ['pendejo', 'estupido', 'imbecil', 'idiota', 'tarado', 'cretino', 'baboso', 'inutil',
+    'mierda', 'malparido', 'malparida', 'puto', 'puta', 'perra', 'zorra', 'gonorrea',
+    'hpta', 'hp', 'hijueputa', 'cabron', 'mamon', 'marica', 'maricon', 'huevon',
+    'guevon', 'culo', 'culero', 'estorbo', 'fracasado', 'asqueroso', 'asquerosa',
+    'desgraciado', 'desgraciada', 'basura', 'animal', 'payaso', 'lambon', 'rata',
+    'ladron', 'ladrón', 'corrupto', 'corrupta', 'estafador', 'estafadora',
+    'sinverguenza', 'sinvergüenza', 'patetico', 'patetica', 'patética', 'mediocre',
+    'mugroso', 'mugrosa', 'cochino', 'cochina', 'bruto', 'bruta', 'infeliz',
+    'ridiculo', 'ridicula', 'ridícula', 'pelotudo', 'pelotuda', 'subnormal',
+    'mongolico', 'mongolica', 'tarambana', 'zopenco', 'zopenca', 'tonto', 'tonta', 'tonta', 'tontito',  'hijo de puta', 'hija de puta', 'come mierda', 'vete a la mierda',
+    'maldito seas', 'maldita seas', 'pedazo de mierda', 'que se joda',
+    'me cago en', 'cara de culo', 'no sirven para nada', 'son una mierda',
+    'servicio de mierda', 'local de mierda', 'empresa de mierda', 'pirobo', 'piroba',
+    'ojala quiebren', 'ojala cierren', 'ojala se mueran',
+    'dan asco', 'dan pena', 'valen mierda', 'son unos mierdas', 'son unos inútiles', 'son unos estúpidos', 'son unos ineptos', 'son unos imbéciles', 'son unos idiotas',]
         
-        CalificacionPedido.objects.create(
+        # Buscamos coincidencias directas en el comentario original
+        encontradas = [w for w in palabras_prohibidas if w in comentario.lower()]
+        
+        # --- DEBUGGING: Mira la consola del servidor para ver si el comentario se procesa ---
+        print(f"DEBUG: Comentario: '{comentario}', Palabras encontradas: {encontradas}")
+        # --- FIN DEBUGGING ---
+
+        estado_mod = 'REVISADO'
+        motivo = None
+        visible = True
+        
+        if encontradas:
+            estado_mod = 'PENDIENTE' # Sigue marcado como pendiente para que resalte en naranja
+            motivo = f"Sospecha de lenguaje: {', '.join(encontradas)}"
+            visible = True  # Pero ahora se muestra a todo el mundo de una
+
+        # 3. Validación: ¿Ha comprado y el pedido está COMPLETADO?
+        tiene_pedido = Pedido.objects.filter(
+            usuario_id=usuario_id, 
+            detallepedido__prenda__idLocal=local, 
+            estado__estado_pedido='COMPLETADO'
+        ).exists()
+
+        if not tiene_pedido:
+            messages.error(request, "Solo puedes calificar locales donde ya hayas recogido y completado un pedido.")
+            return redirect(request.META.get('HTTP_REFERER', reverse('ver_productos_local', args=[id_local])))
+
+        if not valoracion:
+            messages.error(request, "Debes seleccionar una puntuación de estrellas.")
+            return redirect(request.META.get('HTTP_REFERER', reverse('ver_productos_local', args=[id_local])))
+
+        try:
+            val_int = int(valoracion)
+            if val_int < 1 or val_int > 5:
+                raise ValueError()
+        except ValueError:
+            messages.error(request, "La valoración debe estar entre 1 y 5.")
+            return redirect(request.META.get('HTTP_REFERER', reverse('ver_productos_local', args=[id_local])))
+
+        # Usamos update_or_create para que el usuario solo tenga UNA opinión por local
+        calificacion, created = CalificacionPedido.objects.update_or_create(
             locales=local,
-            usuario_id=request.session.get("usuario_id"),
-            comentario=comentario,
-            valoracion=valoracion
+            usuario_id=usuario_id,
+            defaults={
+                'comentario': comentario,
+                'valoracion': val_int,
+                'estado_moderacion': estado_mod,
+                'motivo_deteccion': motivo,
+                'esta_visible': visible
+            }
         )
-        messages.success(request, "¡Gracias por calificar el local! ⭐")
-    return redirect(request.META.get('HTTP_REFERER', 'landing'))
+
+        # Actualizar timestamp de spam
+        request.session['last_rating_time'] = current_time
+
+        if estado_mod == 'PENDIENTE':
+            messages.warning(request, "Tu comentario ha sido recibido, pero ha sido marcado para revisión por la administración debido al lenguaje detectado.")
+        elif created:
+            messages.success(request, "Gracias por calificar el local!")
+        else:
+            messages.success(request, "Tu opinión ha sido actualizada correctamente.")
+    return redirect(request.META.get('HTTP_REFERER', reverse('ver_productos_local', args=[id_local])))

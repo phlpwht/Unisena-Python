@@ -10,7 +10,7 @@
 </head>
 <body class="bg-gradient-to-br from-[#125f58] to-[#d8f5e0] min-h-screen p-4 md:p-10 font-sans">
 
-    <!-- ✅ MENSAJES -->
+    <!-- MENSAJES -->
     {% if messages %}
     <div id="mensaje-container" class="fixed inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none animate-fade-in">
       {% for message in messages %}
@@ -72,7 +72,7 @@
                         <p class="text-[10px] text-[#125f58] font-black uppercase tracking-widest mt-1 flex items-center gap-1">
                             <i class="bi bi-shop"></i> {{ item.obj.idLocal.Nombre_local }}
                         </p>
-                        <!-- ✅ Talla y Tipo de Uniforme -->
+                        <!--Talla y Tipo de Uniforme -->
                         <div class="mt-2 flex items-center gap-2">
                             <span class="bg-[#125f58]/10 text-[#125f58] text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">Talla: {{ item.obj.talla }}</span>
                             <span class="bg-gray-100 text-gray-500 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">{{ item.obj.get_tipoPrenda_display }}</span>
@@ -145,7 +145,7 @@
                             </div>
                         </div>
 
-                            <!-- 💰 Bloque de Abono Obligatorio -->
+                            <!--Bloque de Abono Obligatorio -->
                             <div class="flex flex-col gap-2 mt-6">
                                 <label class="text-[10px] text-gray-400 font-black uppercase tracking-widest ml-1">¿Cuánto deseas abonar?</label>
                                 <div class="relative">
