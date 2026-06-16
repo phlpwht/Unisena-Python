@@ -30,7 +30,11 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-this-in
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '158.23.180.249',
+    'localhost',
+    '127.0.0.1',
+]
 
 
 # Application definition
@@ -159,7 +163,8 @@ MEDIA_URL = '/media/'
 # Se usa BASE_DIR para asegurar rutas absolutas correctas en cualquier sistema
 MEDIA_ROOT = BASE_DIR / 'media'
 
-SITE_ID = 1
+# Coincide con el registro ID 2 en la tabla django_site (127.0.0.1:8000)
+SITE_ID = 2
 
 LOGIN_REDIRECT_URL = 'landing'
 LOGOUT_REDIRECT_URL = 'landing'
