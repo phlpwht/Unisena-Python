@@ -163,8 +163,8 @@ MEDIA_URL = '/media/'
 # Se usa BASE_DIR para asegurar rutas absolutas correctas en cualquier sistema
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Coincide con el registro ID 2 en la tabla django_site (127.0.0.1:8000)
-SITE_ID = 2
+# Coincide con el registro ID 1 en la tabla django_site (127.0.0.1:8000)
+SITE_ID = 1
 
 LOGIN_REDIRECT_URL = 'landing'
 LOGOUT_REDIRECT_URL = 'landing'

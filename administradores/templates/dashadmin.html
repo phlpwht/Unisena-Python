@@ -86,7 +86,7 @@
                     <a href="?section=comentarios" class="sidebar-item {% if section == 'comentarios' %}sidebar-active{% endif %}">
                         <span class="flex items-center gap-4">
                             <i class="bi bi-chat-dots text-lg group-hover:scale-110 transition-transform"></i>
-                            <span>Comentarios en Revisión</span>
+                            <span>Comentarios</span>
                         </span>
                     </a>
                 </nav>
@@ -220,12 +220,14 @@
                                 <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Perfil / Correo</th>
                                 <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Identificación</th>
                                 <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Rol / Jerarquía</th>
+                                <th class="px-4 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Estado</th>
                                 <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Gestión</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             {% for u in usuarios %}
                             <tr class="group hover:bg-gray-50/50 transition-all duration-300">
+                            <tr x-data="{}" class="group hover:bg-gray-50/50 transition-all duration-300">
                                 <td class="px-8 py-6">
                                     <div class="flex items-center gap-4">
                                         <div class="w-12 h-12 rounded-2xl bg-[#125f58]/5 flex items-center justify-center text-[#125f58] font-black text-sm shadow-inner group-hover:bg-[#125f58] group-hover:text-white transition-all duration-500">
@@ -254,22 +256,25 @@
                                         <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
                                     </div>
                                 </td>
+                                <td class="px-4 py-6 text-center">
+                                    {% if u.bloqueado_hasta and u.bloqueado_hasta > now %}
+                                        <span class="px-3 py-1 text-xs font-bold text-red-800 bg-red-100 rounded-full">
+                                            Bloqueado
+                                        </span>
+                                    {% elif u.pendiente_aceptar_politicas %}
+                                        <span class="px-3 py-1 text-xs font-bold text-yellow-800 bg-yellow-100 rounded-full" title="Pendiente aceptar políticas tras sanción">
+                                            Restringido
+                                        </span>
+                                    {% else %}
+                                        <span class="px-3 py-1 text-xs font-bold text-green-800 bg-green-100 rounded-full">
+                                            Activo
+                                        </span>
+                                    {% endif %}
+                                </td>
                                 <td class="px-8 py-6">
-                                    <div class="flex justify-center gap-2">
-                                        {% if u.bloqueado_hasta or u.pendiente_aceptar_politicas %}
-                                        <form method="POST" class="inline">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="user_id" value="{{ u.id }}">
-                                            <input type="hidden" name="accion" value="desbloquear_usuario">
-                                            <button type="submit" title="Desbloquear Usuario" class="text-emerald-500 hover:scale-110 transition-transform">
-                                                <i class="bi bi-unlock-fill text-lg"></i>
-                                            </button>
-                                        </form>
-                                        {% endif %}
-                                        <button type="button" 
-                                            onclick="openDeleteModal('{{ u.id }}', '{{ u.nombres }} {{ u.apellidos }}')"
-                                            class="w-10 h-10 rounded-xl flex items-center justify-center text-rose-400 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-500/30 transition-all active:scale-90">
-                                            <i class="bi bi-trash3-fill text-lg"></i>
+                                    <div class="flex justify-center">
+                                        <button onclick="openUserManagementModal('{{ u.id }}')" class="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 bg-gray-100 hover:bg-[#125f58] hover:text-white hover:shadow-lg hover:shadow-[#125f58]/30 transition-all active:scale-90">
+                                            <i class="bi bi-gear-fill text-lg"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -600,6 +605,68 @@
 
         </main>
     </div>
+    <!-- MODAL DE GESTIÓN DE USUARIO -->
+    <div id="userManagementModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center border-b border-gray-100">
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic" id="manageUserName"></h3>
+            </div>
+            <div class="p-8 space-y-6">
+                <!-- Info de Bloqueo (si aplica) -->
+                <div id="manageUserBlockInfo" class="hidden bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 p-4 rounded-xl">
+                    <p class="font-bold text-sm">Usuario Bloqueado</p>
+                    <p class="text-xs"><b>Hasta:</b> <span id="manageUserBlockUntil"></span></p>
+                    <p class="text-xs"><b>Motivo:</b> <span id="manageUserBlockReason"></span></p>
+                </div>
+
+                <!-- Acciones -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Desbloquear -->
+                    <form id="unblockUserForm" method="POST" class="hidden">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="desbloquear_usuario">
+                        <input type="hidden" name="user_id" id="unblockUserId">
+                        <button type="submit" class="w-full py-3 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all">
+                            <i class="bi bi-unlock-fill"></i> Desbloquear
+                        </button>
+                    </form>
+
+                    <!-- Bloquear -->
+                    <button id="blockUserBtn" onclick="" class="hidden w-full py-3 bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all">
+                        <i class="bi bi-lock-fill"></i> Bloquear
+                    </button>
+
+                    <!-- Notificación -->
+                    <button id="notifyUserBtn" onclick="" class="w-full py-3 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all">
+                        <i class="bi bi-bell-fill"></i> Notificar
+                    </button>
+
+                    <!-- Eliminar -->
+                    <button id="deleteUserBtn" onclick="" class="w-full py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all">
+                        <i class="bi bi-trash3-fill"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-50/50 p-6">
+                <button type="button" onclick="closeUserManagementModal()" class="w-full py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA ENVIAR NOTIFICACIÓN -->
+    <div id="notificationModal" class="fixed inset-0 z-[110] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <form method="POST" class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="enviar_notificacion">
+            <input type="hidden" name="user_id" id="notifUserId">
+            <div class="p-8 text-center"><h3 class="text-xl font-black text-gray-800">Enviar Notificación a <span id="notifUserName"></span></h3></div>
+            <div class="p-8 space-y-4">
+                <textarea name="mensaje" required maxlength="500" class="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-[#125f58]/20 outline-none text-sm font-medium" rows="4" placeholder="Escribe tu mensaje..."></textarea>
+                <select name="tipo_notif" class="w-full p-4 bg-gray-50 rounded-2xl text-sm font-medium outline-none"><option value="info">Informativa</option><option value="alerta">Alerta</option><option value="error">Error / Crítica</option></select>
+            </div>
+            <div class="bg-gray-50/50 p-6 flex gap-3"><button type="button" onclick="closeNotificationModal()" class="flex-1 py-3 bg-white rounded-xl">Cancelar</button><button type="submit" class="flex-1 py-3 bg-blue-500 text-white rounded-xl">Enviar</button></div>
+        </form>
+    </div>
 
     <!-- MODAL DE DETALLES DEL LOCAL (UBICACIÓN GLOBAL) -->
     <div id="localDetailsModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
@@ -807,6 +874,7 @@
         // Auto-cierre de notificaciones con Contador (10 segundos para eliminar)
         let allLocalesData = []; // Declarar aquí para que sea accesible globalmente
         let allPrendasData = [];
+        let allUsersData = [];
         document.addEventListener('DOMContentLoaded', () => {
             const toasts = document.querySelectorAll('.toast-message');
             toasts.forEach(toast => {
@@ -891,6 +959,13 @@
                 {% endfor %}
             ];
         {% endif %}
+
+        {% if section == 'usuarios' %}
+            // Poblar datos de usuarios desde el contexto de Django
+            allUsersData = {{ usuarios_json|safe }};
+        {% endif %}
+
+
 
 // Modal para cambiar estado de Pedido
 function openOrderModal(id, newState) {
@@ -1123,6 +1198,66 @@ function openBlockUserModal(userId, userName) {
         </div>
     `;
     modal.classList.add('modal-active');
+}
+
+// --- NUEVAS FUNCIONES PARA GESTIÓN DE USUARIO ---
+
+function openUserManagementModal(userId) {
+    const user = allUsersData.find(u => u.id == userId);
+    if (!user) return;
+
+    // Poblar info básica
+    document.getElementById('manageUserName').innerText = user.apellidos ? `${user.nombres} ${user.apellidos}` : user.nombres;
+
+    // Info de bloqueo
+    const blockInfo = document.getElementById('manageUserBlockInfo');
+    if (user.is_blocked) {
+        document.getElementById('manageUserBlockUntil').innerText = user.bloqueado_hasta;
+        document.getElementById('manageUserBlockReason').innerText = user.motivo_bloqueo || 'No especificado';
+        blockInfo.classList.remove('hidden');
+    } else {
+        blockInfo.classList.add('hidden');
+    }
+
+    // Botones de acción
+    document.getElementById('unblockUserForm').classList.toggle('hidden', !user.is_blocked);
+    document.getElementById('blockUserBtn').classList.toggle('hidden', user.is_blocked);
+
+    // Configurar IDs y llamadas a funciones
+    const fullName = user.apellidos ? `${user.nombres} ${user.apellidos}` : user.nombres;
+    document.getElementById('unblockUserId').value = user.id; // Asigna el ID al formulario de desbloqueo
+    document.getElementById('blockUserBtn').setAttribute('onclick', `openBlockUserModal('${user.id}', '${fullName}')`);
+    document.getElementById('notifyUserBtn').setAttribute('onclick', `openNotificationModal('${user.id}', '${fullName}')`);
+    document.getElementById('deleteUserBtn').setAttribute('onclick', `openDeleteModal('${user.id}', '${fullName}')`);
+
+    document.getElementById('userManagementModal').classList.add('modal-active');
+}
+
+function closeUserManagementModal() {
+    document.getElementById('userManagementModal').classList.remove('modal-active');
+}
+
+function openNotificationModal(userId, userName) {
+    // Cerramos el modal de gestión para evitar superposición
+    closeUserManagementModal();
+
+    document.getElementById('notifUserId').value = userId;
+    document.getElementById('notifUserName').innerText = userName;
+    document.getElementById('notificationModal').classList.add('modal-active');
+}
+
+function closeNotificationModal() {
+    const modal = document.getElementById('notificationModal');
+    modal.classList.remove('modal-active');
+    // Limpiar el formulario al cerrar
+    modal.querySelector('form').reset();
+}
+
+// Sobrescribir openBlockUserModal para que cierre el de gestión primero
+const originalOpenBlockUserModal = openBlockUserModal;
+openBlockUserModal = function(userId, userName) {
+    closeUserManagementModal();
+    originalOpenBlockUserModal(userId, userName);
 }
 
     </script>

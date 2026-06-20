@@ -332,6 +332,25 @@ def dashadmin(request):
                 messages.success(request, f"Usuario bloqueado por {plazo}.")
             return redirect(request.META.get('HTTP_REFERER', f"{reverse('admin_dashboard')}?section=usuarios"))
 
+        elif accion == "enviar_notificacion":
+            user_id = request.POST.get("user_id")
+            mensaje = request.POST.get("mensaje", "").strip()
+            tipo_notif = request.POST.get("tipo_notif", "info")
+
+            if not user_id or not mensaje:
+                messages.error(request, "Se requiere un destinatario y un mensaje.")
+            elif len(mensaje) > 500:
+                messages.error(request, "El mensaje no puede exceder los 500 caracteres.")
+            else:
+                usuario_notificar = get_object_or_404(Usuario, id=user_id)
+                Notificacion.objects.create(
+                    usuario=usuario_notificar,
+                    mensaje=mensaje,
+                    tipo=tipo_notif
+                )
+                messages.success(request, f"Notificación enviada correctamente a {usuario_notificar.nombres}.")
+            return redirect(f"{reverse('admin_dashboard')}?section=usuarios")
+
     # --- LÓGICA DE DATOS Y FILTROS ---
     q_search = request.GET.get('q_search', '').strip()
     
@@ -349,6 +368,16 @@ def dashadmin(request):
             usuarios = usuarios.filter(Q(nombres__icontains=q_search) | Q(apellidos__icontains=q_search) | Q(num_identificacion__icontains=q_search) | Q(correo__icontains=q_search))
         if f_rol: usuarios = usuarios.filter(rol_id=f_rol)
         if f_tipo_id: usuarios = usuarios.filter(tipo_identificacion=f_tipo_id)
+
+        # Añadir datos para el modal de gestión de usuario
+        usuarios = usuarios.annotate(
+            is_blocked=Q(bloqueado_hasta__gt=now()) | Q(pendiente_aceptar_politicas=True)
+        )
+        # Convertir a lista de diccionarios para serializar a JSON
+        usuarios_json = list(usuarios.values('id', 'nombres', 'apellidos', 'rol__nombre_rol', 'is_blocked', 'bloqueado_hasta', 'motivo_bloqueo', 'rol_id'))
+        import json
+        from django.core.serializers.json import DjangoJSONEncoder
+        usuarios_json_str = json.dumps(usuarios_json, cls=DjangoJSONEncoder)
 
     elif section == 'locales':
         locales = Local.objects.all().select_related('IdUsuario').order_by('-IdLocal')
@@ -444,6 +473,7 @@ def dashadmin(request):
         "talla_choices": Prendas.TALLA_CHOICES,
         "material_choices": Prendas.MATERIAL_CHOICES,
         "prenda_tipo_choices": Prendas.TIPO_PRENDA_CHOICES,
+        "usuarios_json": usuarios_json_str if section == 'usuarios' else '[]',
     })
 
 @never_cache
