@@ -227,7 +227,7 @@
                         <tbody class="divide-y divide-gray-50">
                             {% for u in usuarios %}
                             <tr class="group hover:bg-gray-50/50 transition-all duration-300">
-                            <tr x-data="{}" class="group hover:bg-gray-50/50 transition-all duration-300">
+                            <tr x-data="{}" class="group hover:bg-gray-50/50 transition-all duration-300" data-user-id="{{ u.id }}">
                                 <td class="px-8 py-6">
                                     <div class="flex items-center gap-4">
                                         <div class="w-12 h-12 rounded-2xl bg-[#125f58]/5 flex items-center justify-center text-[#125f58] font-black text-sm shadow-inner group-hover:bg-[#125f58] group-hover:text-white transition-all duration-500">
@@ -258,15 +258,15 @@
                                 </td>
                                 <td class="px-4 py-6 text-center">
                                     {% if u.bloqueado_hasta and u.bloqueado_hasta > now %}
-                                        <span class="px-3 py-1 text-xs font-bold text-red-800 bg-red-100 rounded-full">
+                                        <span class="user-status px-3 py-1 text-xs font-bold text-red-800 bg-red-100 rounded-full" data-user-id="{{ u.id }}">
                                             Bloqueado
                                         </span>
                                     {% elif u.pendiente_aceptar_politicas %}
-                                        <span class="px-3 py-1 text-xs font-bold text-yellow-800 bg-yellow-100 rounded-full" title="Pendiente aceptar políticas tras sanción">
+                                        <span class="user-status px-3 py-1 text-xs font-bold text-yellow-800 bg-yellow-100 rounded-full" title="Pendiente aceptar políticas tras sanción" data-user-id="{{ u.id }}">
                                             Restringido
                                         </span>
                                     {% else %}
-                                        <span class="px-3 py-1 text-xs font-bold text-green-800 bg-green-100 rounded-full">
+                                        <span class="user-status px-3 py-1 text-xs font-bold text-green-800 bg-green-100 rounded-full" data-user-id="{{ u.id }}">
                                             Activo
                                         </span>
                                     {% endif %}
@@ -458,7 +458,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             {% for c in comentarios %}
-                            <tr class="group hover:bg-gray-50/50 transition-all duration-300">
+                            <tr class="group hover:bg-gray-50/50 transition-all duration-300" data-comment-id="{{ c.id_calificacion }}" data-user-id="{{ c.usuario.id }}" data-user-bloqueado="{% if c.usuario.bloqueado_hasta and c.usuario.bloqueado_hasta > now %}true{% else %}false{% endif %}" data-user-bloqueado-hasta="{% if c.usuario.bloqueado_hasta %}{{ c.usuario.bloqueado_hasta|date:'d/m/Y H:i' }}{% endif %}" data-user-motivo="{{ c.usuario.motivo_bloqueo|escapejs }}">
                                 <td class="px-8 py-6">
                                     <p class="text-[10px] font-black text-[#125f58]">#{{ c.id_calificacion }}</p>
                                     <p class="text-xs font-black text-gray-700">{{ c.usuario.nombres }} {{ c.usuario.apellidos }}</p>
@@ -472,7 +472,7 @@
                                 </td>
                                 <td class="px-8 py-6">
                                     <p class="text-[9px] font-black text-rose-400 uppercase mb-1">{{ c.motivo_deteccion|default:"Filtro manual" }}</p>
-                                    <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase 
+                                    <span class="comment-moderation-state px-3 py-1 rounded-lg text-[9px] font-black uppercase 
                                         {% if c.estado_moderacion == 'PENDIENTE' %}bg-orange-100 text-orange-600
                                         {% elif c.estado_moderacion == 'REVISADO' %}bg-emerald-100 text-emerald-600
                                         {% elif c.estado_moderacion == 'ADVERTIDO' %}bg-yellow-100 text-yellow-600
@@ -626,7 +626,7 @@
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="desbloquear_usuario">
                         <input type="hidden" name="user_id" id="unblockUserId">
-                        <button type="submit" class="w-full py-3 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all">
+                        <button type="button" onclick="confirmUnblockUser()" class="w-full py-3 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all">
                             <i class="bi bi-unlock-fill"></i> Desbloquear
                         </button>
                     </form>
@@ -771,7 +771,7 @@
                 </div>
                 <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">¿Estás seguro?</h3>
                 <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">
-                    Estás a punto de eliminar a <span id="deleteUserName" class="text-gray-700 font-black"></span>. Esta acción puede afectar pedidos y locales vinculados.
+                    Estás a punto de eliminar <span id="deleteActionType" class="text-gray-700 font-black">usuario</span> <span id="deleteActionTarget" class="text-gray-700 font-black"></span>. Esta acción puede afectar pedidos y registros relacionados.
                 </p>
             </div>
             <div class="bg-gray-50/50 p-6">
@@ -788,6 +788,34 @@
                         <button type="button" onclick="closeDeleteModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
                         <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">
                             Sí, Eliminar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE DESBLOQUEO -->
+    <div id="unblockConfirmModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="bi bi-unlock-fill text-4xl"></i>
+                </div>
+                <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">¿De verdad deseas desbloquear?</h3>
+                <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">
+                    Estás a punto de desbloquear a <span id="unblockUserNameConfirm" class="text-gray-700 font-black"></span>. Podrá acceder nuevamente a su cuenta.
+                </p>
+            </div>
+            <div class="bg-gray-50/50 p-6">
+                <form id="unblockConfirmForm" method="POST" class="w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="desbloquear_usuario">
+                    <input type="hidden" name="user_id" id="unblockConfirmUserId">
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeUnblockConfirmModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+                        <button type="submit" class="flex-1 py-3 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95">
+                            Sí, Desbloquear
                         </button>
                     </div>
                 </form>
@@ -824,7 +852,107 @@
         </div>
     </div>
 
-    <script>
+            <!-- MODALES ADICIONALES: Pedido / Bloqueo / Moderación -->
+            <div id="cancelOrderModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+                <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+                    <div class="p-8 text-center">
+                        <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <i class="bi bi-x-octagon-fill text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">Cancelar Pedido</h3>
+                        <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">Estás a punto de cancelar el pedido <span id="cancelOrderNumber" class="text-gray-700 font-black"></span>.</p>
+                    </div>
+                    <div class="bg-gray-50/50 p-6">
+                        <form id="cancelOrderForm" method="POST" class="w-full">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="cancelar_pedido">
+                            <input type="hidden" name="pedido_id" id="cancelOrderId">
+                            <div class="mb-5 text-left">
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Motivo de la cancelación <span class="text-rose-500">*</span></label>
+                                <textarea name="motivo" id="cancelOrderReason" required maxlength="150" class="w-full p-4 bg-gray-50 rounded-[1.2rem] border-2 border-transparent focus:border-rose-500/20 focus:bg-white outline-none text-xs font-bold text-gray-700 resize-none" rows="3" placeholder="Motivo..."></textarea>
+                            </div>
+                            <div class="flex gap-3">
+                                <button type="button" onclick="closeOrderModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+                                <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl">Confirmar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="blockUserModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+                <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+                    <div class="p-8 text-center">
+                        <div class="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <i class="bi bi-person-x-fill text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">Bloquear Usuario</h3>
+                        <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">Vas a sancionar al usuario <span id="blockUserName" class="text-gray-700 font-black"></span>.</p>
+                    </div>
+                    <div class="bg-gray-50/50 p-6">
+                        <form id="blockUserForm" method="POST" class="w-full">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="bloquear_usuario">
+                            <input type="hidden" name="user_id" id="blockUserId">
+                            <div class="mb-4 text-left">
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Motivo</label>
+                                <textarea name="motivo" required class="w-full p-4 bg-gray-50 rounded-[1.5rem] border-2 border-transparent outline-none text-xs font-bold text-gray-600 resize-none" rows="2" placeholder="Motivo de la sanción..."></textarea>
+                            </div>
+                            <div class="mb-6">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Plazo</label>
+                                <select name="plazo_bloqueo" class="w-full p-4 bg-gray-100 rounded-2xl text-xs font-bold outline-none border-2 border-transparent">
+                                    <option value="30s">30 Segundos</option>
+                                    <option value="1d">1 Día</option>
+                                    <option value="3d">3 Días</option>
+                                    <option value="1w">1 Semana</option>
+                                    <option value="1m">1 Mes</option>
+                                    <option value="perm">Permanente</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-3">
+                                <button type="button" onclick="closeBlockUserModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+                                <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl">Confirmar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="moderationBlockModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+                <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
+                    <div class="p-8 text-center">
+                        <div class="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <i class="bi bi-shield-exclamation text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">Bloqueo por Moderación</h3>
+                        <p class="text-gray-400 text-xs font-medium mt-2 leading-relaxed">Sancionar al usuario <span id="moderationBlockUserName" class="text-gray-700 font-black"></span>.</p>
+                    </div>
+                    <div class="bg-gray-50/50 p-6">
+                        <form id="moderationBlockForm" method="POST" class="w-full">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="bloquear_usuario_moderacion">
+                            <input type="hidden" name="comentario_id" id="moderationCommentId">
+                            <div class="mb-6">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Plazo</label>
+                                <select name="plazo_bloqueo" class="w-full p-4 bg-gray-100 rounded-2xl text-xs font-bold outline-none border-2 border-transparent">
+                                    <option value="30s">30 Segundos</option>
+                                    <option value="1d">1 Día</option>
+                                    <option value="3d">3 Días</option>
+                                    <option value="1w">1 Semana</option>
+                                    <option value="1m">1 Mes</option>
+                                    <option value="perm">Permanente</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-3">
+                                <button type="button" onclick="closeModerationBlockModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
+                                <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl">Confirmar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('sidebar-closed');
@@ -835,7 +963,11 @@
         function openDeleteModal(id, name) {
             document.getElementById('deleteTargetId').value = id;
             document.getElementById('deleteTargetId').name = 'user_id';
-            document.getElementById('deleteUserName').innerText = name;
+            document.getElementById('deleteActionType').innerText = 'al usuario';
+            document.getElementById('deleteActionTarget').innerText = name;
+            document.getElementById('deleteForm').querySelector('input[name="accion"]').value = 'eliminar';
+            document.getElementById('motivoDeleteContainer').classList.add('hidden');
+            document.getElementById('motivoDeleteText').required = false;
             document.getElementById('deleteModal').classList.add('modal-active');
         }
 
@@ -969,37 +1101,27 @@
 
 // Modal para cambiar estado de Pedido
 function openOrderModal(id, newState) {
-    const modal = document.getElementById('roleModal');
-    const form = document.getElementById('roleForm');
-    
-    // Limpiar el formulario y establecer los campos ocultos
-    form.innerHTML = `
-        {% csrf_token %}
-        <input type="hidden" name="pedido_id" value="${id}">
-        <input type="hidden" name="accion" value="cancelar_pedido">
-        <input type="hidden" name="nuevo_estado" value="${newState}">
-        <div class="mb-5 text-left">
-            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">
-                Motivo de la cancelación <span class="text-rose-500">*</span>
-            </label>
-            <textarea name="motivo" required maxlength="150" 
-                class="w-full p-4 bg-gray-50 rounded-[1.2rem] border-2 border-transparent focus:border-rose-500/20 focus:bg-white outline-none text-xs font-bold text-gray-700 resize-none transition-all shadow-inner" 
-                rows="3" placeholder="Ej: El producto no está disponible o el cliente lo solicitó..."></textarea>
-            <p class="text-[8px] text-gray-400 mt-1.5 ml-2 font-bold uppercase tracking-widest">Máximo 150 caracteres</p>
-        </div>
-        <div class="flex gap-3">
-            <button type="button" onclick="closeRoleModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
-                Cancelar
-            </button>
-            <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">
-                Confirmar
-            </button>
-        </div>
-    `;
-    // Actualizar el título y texto del modal de rol para que coincida con la acción de pedido
-    document.getElementById('roleUserName').innerText = `Pedido #${id}`;
-    document.getElementById('newRoleName').innerText = `a ${newState}`;
+    const modal = document.getElementById('cancelOrderModal');
+    const idEl = document.getElementById('cancelOrderId');
+    const numberEl = document.getElementById('cancelOrderNumber');
+    const reasonEl = document.getElementById('cancelOrderReason');
+
+    if (!modal || !idEl || !numberEl || !reasonEl) {
+        console.error('openOrderModal: elementos del modal de cancelación no encontrados', { modal, idEl, numberEl, reasonEl });
+        return;
+    }
+
+    idEl.value = id;
+    numberEl.innerText = `#${id}`;
+    reasonEl.value = '';
     modal.classList.add('modal-active');
+}
+
+function closeOrderModal() {
+    const modal = document.getElementById('cancelOrderModal');
+    const form = document.getElementById('cancelOrderForm');
+    if (modal) modal.classList.remove('modal-active');
+    if (form) form.reset();
 }
 
 // Modal de Detalles del Local
@@ -1107,13 +1229,15 @@ function openDeleteLocalModal(id, name) {
     const target = document.getElementById('deleteTargetId');
     target.name = 'local_id';
     target.value = id;
-    document.getElementById('deleteUserName').innerText = name;
+    document.getElementById('deleteActionType').innerText = 'el local';
+    document.getElementById('deleteActionTarget').innerText = name;
     const form = document.getElementById('deleteForm');
     if(form.querySelector('input[name="accion"]')) form.querySelector('input[name="accion"]').value = 'eliminar_local';
 
     // Mostrar motivo solo para locales
     document.getElementById('motivoDeleteContainer').classList.remove('hidden');
     document.getElementById('motivoDeleteText').setAttribute('required', 'true');
+    document.getElementById('motivoDeleteText').placeholder = "Explica el motivo para el dueño del local...";
 
     document.getElementById('deleteModal').classList.add('modal-active');
 }
@@ -1123,7 +1247,8 @@ function openDeletePrendaModal(id, name) {
     const target = document.getElementById('deleteTargetId');
     target.name = 'prenda_id';
     target.value = id;
-    document.getElementById('deleteUserName').innerText = name;
+    document.getElementById('deleteActionType').innerText = 'el uniforme';
+    document.getElementById('deleteActionTarget').innerText = name;
     const form = document.getElementById('deleteForm');
     if(form.querySelector('input[name="accion"]')) form.querySelector('input[name="accion"]').value = 'eliminar_prenda';
 
@@ -1137,67 +1262,54 @@ function openDeletePrendaModal(id, name) {
 
 // Modal para bloquear usuario desde comentario
 function openBlockModerationModal(comId, userName) {
-    const modal = document.getElementById('deleteModal');
-    document.getElementById('deleteUserName').innerText = userName;
-    const form = document.getElementById('deleteForm');
-    form.innerHTML = `
-        {% csrf_token %}
-        <input type="hidden" name="accion" value="bloquear_usuario_moderacion">
-        <input type="hidden" name="comentario_id" value="${comId}">
-        <div class="mb-6">
-            <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Selecciona Plazo de Bloqueo:</label>
-            <select name="plazo_bloqueo" class="w-full p-4 bg-gray-100 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-[#125f58]/20">
-                <option value="30s">30 Segundos (Testing)</option>
-                <option value="1d">1 Día</option>
-                <option value="3d">3 Días</option>
-                <option value="1w">1 Semana</option>
-                <option value="1m">1 Mes</option>
-                <option value="perm">Bloqueo Permanente y Eliminación</option>
-            </select>
-        </div>
-        <div class="flex gap-3">
-            <button type="button" onclick="closeDeleteModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">
-                Cancelar
-            </button>
-            <button type="submit" class="flex-1 py-3 bg-rose-500 text-white rounded-xl text-[10px] font-black shadow-lg shadow-rose-500/20">CONFIRMAR BLOQUEO</button>
-        </div>
-    `;
+    const modal = document.getElementById('moderationBlockModal');
+    const comEl = document.getElementById('moderationCommentId');
+    const nameEl = document.getElementById('moderationBlockUserName');
+    const form = document.getElementById('moderationBlockForm');
+
+    if (!modal || !comEl || !nameEl || !form) {
+        console.error('openBlockModerationModal: elementos del modal de moderación no encontrados', { modal, comEl, nameEl, form });
+        return;
+    }
+
+    comEl.value = comId;
+    nameEl.innerText = userName;
+    form.reset();
     modal.classList.add('modal-active');
+}
+
+function closeModerationBlockModal() {
+    const modal = document.getElementById('moderationBlockModal');
+    const form = document.getElementById('moderationBlockForm');
+    if (modal) modal.classList.remove('modal-active');
+    if (form) form.reset();
 }
 
 // Modal genérico para bloquear usuario (Usado en Locales)
 function openBlockUserModal(userId, userName) {
-    // Primero cerramos el modal de detalles si está abierto para evitar conflictos de UI
+    closeUserManagementModal();
     closeLocalDetailsModal();
+    const modal = document.getElementById('blockUserModal');
+    const idEl = document.getElementById('blockUserId');
+    const nameEl = document.getElementById('blockUserName');
+    const form = document.getElementById('blockUserForm');
 
-    const modal = document.getElementById('deleteModal');
-    document.getElementById('deleteUserName').innerText = userName;
-    const form = document.getElementById('deleteForm');
-    form.innerHTML = ` <!-- Re-render the form content -->
-        {% csrf_token %}
-        <input type="hidden" name="accion" value="bloquear_usuario">
-        <input type="hidden" name="user_id" value="${userId}">
-        <div class="mb-4 text-left">
-            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Motivo de la sanción:</label>
-            <textarea name="motivo" required class="w-full p-4 bg-gray-50 rounded-[1.5rem] border-2 border-transparent focus:border-[#125f58]/10 outline-none text-xs font-bold text-gray-600 resize-none" rows="2" placeholder="Ej: Venta de productos no autorizados..."></textarea>
-        </div>
-        <div class="mb-6">
-            <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Selecciona Plazo de Bloqueo:</label>
-            <select name="plazo_bloqueo" class="w-full p-4 bg-gray-100 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-[#125f58]/20">
-                <option value="30s">30 Segundos (Prueba)</option>
-                <option value="1d">1 Día</option>
-                <option value="3d">3 Días</option>
-                <option value="1w">1 Semana</option>
-                <option value="1m">1 Mes</option>
-                <option value="perm">Bloqueo Permanente</option>
-            </select>
-        </div>
-        <div class="flex gap-3">
-            <button type="button" onclick="closeDeleteModal()" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-white hover:bg-gray-100 rounded-xl transition-all border border-gray-100">Cancelar</button>
-            <button type="submit" class="flex-1 py-3 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">CONFIRMAR BLOQUEO</button>
-        </div>
-    `;
+    if (!modal || !idEl || !nameEl || !form) {
+        console.error('openBlockUserModal: elementos del modal de bloqueo no encontrados', { modal, idEl, nameEl, form });
+        return;
+    }
+
+    idEl.value = userId;
+    nameEl.innerText = userName;
+    form.reset();
     modal.classList.add('modal-active');
+}
+
+function closeBlockUserModal() {
+    const modal = document.getElementById('blockUserModal');
+    const form = document.getElementById('blockUserForm');
+    if (modal) modal.classList.remove('modal-active');
+    if (form) form.reset();
 }
 
 // --- NUEVAS FUNCIONES PARA GESTIÓN DE USUARIO ---
@@ -1226,9 +1338,9 @@ function openUserManagementModal(userId) {
     // Configurar IDs y llamadas a funciones
     const fullName = user.apellidos ? `${user.nombres} ${user.apellidos}` : user.nombres;
     document.getElementById('unblockUserId').value = user.id; // Asigna el ID al formulario de desbloqueo
-    document.getElementById('blockUserBtn').setAttribute('onclick', `openBlockUserModal('${user.id}', '${fullName}')`);
-    document.getElementById('notifyUserBtn').setAttribute('onclick', `openNotificationModal('${user.id}', '${fullName}')`);
-    document.getElementById('deleteUserBtn').setAttribute('onclick', `openDeleteModal('${user.id}', '${fullName}')`);
+    document.getElementById('blockUserBtn').onclick = function() { openBlockUserModal(user.id, fullName); };
+    document.getElementById('notifyUserBtn').onclick = function() { openNotificationModal(user.id, fullName); };
+    document.getElementById('deleteUserBtn').onclick = function() { openDeleteModal(user.id, fullName); };
 
     document.getElementById('userManagementModal').classList.add('modal-active');
 }
@@ -1253,12 +1365,23 @@ function closeNotificationModal() {
     modal.querySelector('form').reset();
 }
 
-// Sobrescribir openBlockUserModal para que cierre el de gestión primero
-const originalOpenBlockUserModal = openBlockUserModal;
-openBlockUserModal = function(userId, userName) {
-    closeUserManagementModal();
-    originalOpenBlockUserModal(userId, userName);
+function openUnblockConfirmModal(userId) {
+    const userName = document.getElementById('manageUserName').innerText || 'usuario';
+    document.getElementById('unblockUserNameConfirm').innerText = userName;
+    document.getElementById('unblockConfirmUserId').value = userId;
+    document.getElementById('unblockConfirmModal').classList.add('modal-active');
 }
+
+function closeUnblockConfirmModal() {
+    document.getElementById('unblockConfirmModal').classList.remove('modal-active');
+}
+
+function confirmUnblockUser() {
+    const userId = document.getElementById('unblockUserId').value;
+    openUnblockConfirmModal(userId);
+}
+
+
 
     </script>
 </body>

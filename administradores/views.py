@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.cache import never_cache
 from usuario.models import Usuario, Rol
+from usuario.utils import _get_user_block_status
 from uniformes.models import Pedido, EstadoPedido, Prendas, CalificacionPedido
 from locales.models import Local, Notificacion
 from django.db.models import Q
@@ -20,6 +21,17 @@ def dashadmin(request):
     # Verificamos que sea Administrador
     if request.session.get("usuario_rol") != "Administrador":
         return redirect("login")
+
+    # Verificar si el administrador está bloqueado (reutiliza la lógica central)
+    usuario_bloqueado, msg_bloqueo, user_obj = _get_user_block_status(request)
+    if usuario_bloqueado:
+        # Reutilizamos la plantilla `politicas.html` que ya muestra el aviso de cuenta restringida
+        return render(request, "politicas.html", {
+            "usuario_bloqueado": usuario_bloqueado,
+            "msg_bloqueo": msg_bloqueo,
+            "nombre": request.session.get("usuario_nombre"),
+            "rol": request.session.get("usuario_rol"),
+        })
 
     # Detectar qué sección mostrar (por defecto 'inicio')
     section = request.GET.get('section', 'inicio')
