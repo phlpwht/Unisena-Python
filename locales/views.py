@@ -673,7 +673,7 @@ def detalle_pedido_vendedor(request, id_local, id_pedido):
 
             # 🚨 Lógica de Inventario: Solo si cambia a COMPLETADO y no lo estaba antes
             if nuevo_estado_nombre == 'COMPLETADO' and estado_anterior != 'COMPLETADO':
-                detalles_items = DetallePedido.objects.filter(pedido=pedido)
+                detalles_items = DetallePedido.objects.filter(pedido=pedido, prenda__idLocal=local)
                 
                 # Validación de seguridad: re-verificar stock antes de procesar
                 for item in detalles_items:
