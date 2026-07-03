@@ -24,6 +24,7 @@ class Usuario(models.Model):
     apellidos = models.CharField(max_length=50)
 
     correo = models.EmailField(unique=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     fecha_nacimiento = models.DateField()
 

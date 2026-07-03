@@ -20,7 +20,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from decimal import Decimal
-from datetime import datetime, time
+from datetime import datetime, time, date
 import io
 
 @never_cache
@@ -350,6 +350,20 @@ def dashadmin(request):
     # --- LÓGICA DE DATOS Y FILTROS ---
     q_search = request.GET.get('q_search', '').strip()
     
+    # Inicialización de todos los filtros para evitar UnboundLocalError
+    f_rol = request.GET.get('f_rol', '')
+    f_tipo_id = request.GET.get('f_tipo_id', '')
+    f_status_user = request.GET.get('f_status_user', '')
+    f_status = request.GET.get('f_status', '')
+    f_user_status = request.GET.get('f_user_status', '')
+    f_estado = request.GET.get('f_estado', '')
+    f_talla = request.GET.get('f_talla', '')
+    f_material = request.GET.get('f_material', '')
+    f_tipo_prenda = request.GET.get('f_tipo_prenda', '')
+    f_estado_moderacion = request.GET.get('f_estado_moderacion', '')
+    # Filtros específicos de reportes
+    estado_filter = request.GET.get('estado', '')
+
     # Notificaciones para el Admin
     # Nota: Se filtran pero ya no se mostrarán en el dashboard según requerimiento
     notifs = Notificacion.objects.filter(usuario_id=request.session.get("usuario_id")).order_by('-fecha')[:10]
@@ -488,17 +502,12 @@ def dashadmin(request):
     
     if section == 'usuarios':
         usuarios = Usuario.objects.all().select_related('rol').order_by('-id')
-        f_rol = request.GET.get('f_rol', '')
-        f_tipo_id = request.GET.get('f_tipo_id', '')
-        f_status_user = request.GET.get('f_status_user', '')
-
         if q_search:
             usuarios = usuarios.filter(Q(nombres__icontains=q_search) | Q(apellidos__icontains=q_search) | Q(num_identificacion__icontains=q_search) | Q(correo__icontains=q_search))
         if f_rol: usuarios = usuarios.filter(rol_id=f_rol)
         if f_tipo_id: usuarios = usuarios.filter(tipo_identificacion=f_tipo_id)
         if f_status_user == 'blocked':
-            # Usuarios con bloqueo activo o pendientes de aceptar políticas
-            usuarios = usuarios.filter(Q(bloqueado_hasta__gt=now()) | Q(pendiente_aceptar_politicas=True))
+            usuarios = usuarios.filter(bloqueado_hasta__gt=now())
         elif f_status_user == 'active':
             usuarios = usuarios.filter(Q(bloqueado_hasta__isnull=True) | Q(bloqueado_hasta__lte=now()), pendiente_aceptar_politicas=False)
 
@@ -512,8 +521,6 @@ def dashadmin(request):
 
     elif section == 'locales':
         locales = Local.objects.all().select_related('IdUsuario').order_by('-IdLocal')
-        f_status = request.GET.get('f_status', '')
-        f_user_status = request.GET.get('f_user_status', '')
         if q_search:
             locales = locales.filter(Q(Nombre_local__icontains=q_search) | Q(IdUsuario__nombres__icontains=q_search) | Q(Descripcion__icontains=q_search))
         if f_status == '1': locales = locales.filter(EstaActivo=True)
@@ -543,7 +550,6 @@ def dashadmin(request):
             precio_total=Sum('detallepedido__total_pedido')
         ).order_by('-idPedido')
         
-        f_estado = request.GET.get('f_estado', '')
         if q_search:
             pedidos = pedidos.filter(Q(idPedido__icontains=q_search) | Q(usuario__nombres__icontains=q_search) | Q(detallepedido__prenda__idLocal__Nombre_local__icontains=q_search)).distinct()
         if f_estado:
@@ -555,9 +561,6 @@ def dashadmin(request):
 
     elif section == 'uniformes':
         uniformes = Prendas.objects.all().select_related('idLocal', 'idLocal__IdUsuario').order_by('-idPrenda')
-        f_talla = request.GET.get('f_talla', '')
-        f_material = request.GET.get('f_material', '')
-        f_tipo_prenda = request.GET.get('f_tipo_prenda', '')
         if q_search:
             uniformes = uniformes.filter(Q(nombre__icontains=q_search) | Q(descripcion__icontains=q_search) | Q(idPrenda__icontains=q_search) | Q(idLocal__Nombre_local__icontains=q_search))
         if f_talla: uniformes = uniformes.filter(talla=f_talla)
@@ -574,7 +577,6 @@ def dashadmin(request):
                 Q(locales__Nombre_local__icontains=q_search) |
                 Q(motivo_deteccion__icontains=q_search)
             )
-        f_estado_moderacion = request.GET.get('f_estado_moderacion', '')
         if f_estado_moderacion:
             comentarios = comentarios.filter(estado_moderacion=f_estado_moderacion
             )
@@ -594,16 +596,16 @@ def dashadmin(request):
         "estados_pedido": EstadoPedido.ESTADO_CHOICES,
         "tipo_identificacion_choices": Usuario.TIPOS_IDENTIFICACION,
         "q_search": q_search,
-        "f_rol_sel": request.GET.get('f_rol', ''),
-        "f_tipo_id_sel": request.GET.get('f_tipo_id', ''),
-        "f_status_user_sel": request.GET.get('f_status_user', ''),
-        "f_status_sel": request.GET.get('f_status', ''),
-        "f_user_status_sel": request.GET.get('f_user_status', ''),
-        "f_estado_sel": request.GET.get('f_estado', ''),
-        "f_talla_sel": request.GET.get('f_talla', ''),
-        "f_material_sel": request.GET.get('f_material', ''),
-        "f_tipo_prenda_sel": request.GET.get('f_tipo_prenda', ''),
-        "f_estado_moderacion_sel": request.GET.get('f_estado_moderacion', ''),
+        "f_rol_sel": f_rol,
+        "f_tipo_id_sel": f_tipo_id,
+        "f_status_user_sel": f_status_user,
+        "f_status_sel": f_status,
+        "f_user_status_sel": f_user_status,
+        "f_estado_sel": f_estado,
+        "f_talla_sel": f_talla,
+        "material_sel": f_material,
+        "f_tipo_prenda_sel": f_tipo_prenda,
+        "f_estado_moderacion_sel": f_estado_moderacion,
         "now": now(), # Pasar la hora actual al template para comparaciones
         "timezone": "America/Bogota", # Para consistencia en el template si es necesario
         "talla_choices": Prendas.TALLA_CHOICES,
@@ -617,11 +619,19 @@ def dashadmin(request):
         fecha_inicio = request.GET.get('fecha_inicio')
         fecha_fin = request.GET.get('fecha_fin')
         locales_filter = request.GET.getlist('locales')
-        estado_filter = request.GET.get('estado', '')
         export_format = request.GET.get('export')
         
         # Convertir a enteros para la comparación en el template
         locales_filter_int = [int(l) for l in locales_filter]
+
+        # Impresión de filtros recibidos
+        print("===== FILTROS RECIBIDOS =====")
+        print(request.GET)
+        print("fecha_inicio:", fecha_inicio)
+        print("fecha_fin:", fecha_fin)
+        print("estado:", estado_filter)
+        print("locales:", locales_filter)
+        print("=============================")
 
         # 1. Validación de Fechas
         if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
@@ -647,20 +657,19 @@ def dashadmin(request):
             print("request.GET reportes:", dict(request.GET))
             print("Antes:", qs.count())
 
-            # --- Lógica de Fechas con Zona Horaria ---
             if fecha_inicio:
                 fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-                inicio = now().replace(year=fecha_inicio_obj.year, month=fecha_inicio_obj.month, day=fecha_inicio_obj.day, hour=0, minute=0, second=0, microsecond=0)
-                qs = qs.filter(pedido__fecha_pedido__gte=inicio)
-                print("Fecha inicio (aware):", inicio)
+                qs = qs.filter(pedido__fecha_pedido__date__gte=fecha_inicio_obj)
+                print("Después fecha inicio:", qs.count())
+            else:
+                print("Después fecha inicio: sin filtro")
 
             if fecha_fin:
                 fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-                fin = now().replace(year=fecha_fin_obj.year, month=fecha_fin_obj.month, day=fecha_fin_obj.day, hour=23, minute=59, second=59, microsecond=999999)
-                qs = qs.filter(pedido__fecha_pedido__lte=fin)
-                print("Fecha fin (aware):", fin)
-            
-            print("Después de filtros de fecha:", qs.count())
+                qs = qs.filter(pedido__fecha_pedido__date__lte=fecha_fin_obj)
+                print("Después fecha fin:", qs.count())
+            else:
+                print("Después fecha fin: sin filtro")
 
             headers = ['Fecha', 'Pedido ID', 'Cliente', 'Local', 'Total']
             if estado_filter:
@@ -673,7 +682,13 @@ def dashadmin(request):
             print("Después local:", qs.count())
 
             qs = qs.order_by('-pedido__fecha_pedido')
-            print("SQL:", str(qs.query))
+            print("SQL:", qs.query)
+            print("Cantidad ventas:", qs.count())
+            print(list(qs.values(
+                "pedido__idPedido",
+                "pedido__fecha_pedido",
+                "prenda__idLocal__Nombre_local",
+                "total_pedido")[:10]))
 
             data = list(qs.values('pedido__fecha_pedido', 'pedido__idPedido', 'pedido__usuario__nombres', 'prenda__idLocal__Nombre_local', 'total_pedido'))
 
@@ -685,14 +700,17 @@ def dashadmin(request):
 
             if fecha_inicio:
                 fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-                inicio = now().replace(year=fecha_inicio_obj.year, month=fecha_inicio_obj.month, day=fecha_inicio_obj.day, hour=0, minute=0, second=0, microsecond=0)
-                qs = qs.filter(fecha_pedido__gte=inicio)
+                qs = qs.filter(fecha_pedido__date__gte=fecha_inicio_obj)
+                print("Después fecha inicio:", qs.count())
+            else:
+                print("Después fecha inicio: sin filtro")
 
             if fecha_fin:
                 fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-                fin = now().replace(year=fecha_fin_obj.year, month=fecha_fin_obj.month, day=fecha_fin_obj.day, hour=23, minute=59, second=59, microsecond=999999)
-                qs = qs.filter(fecha_pedido__lte=fin)
-            print("Después de filtros de fecha:", qs.count())
+                qs = qs.filter(fecha_pedido__date__lte=fecha_fin_obj)
+                print("Después fecha fin:", qs.count())
+            else:
+                print("Después fecha fin: sin filtro")
 
             headers = ['Pedido ID', 'Cliente', 'Estado', 'Fecha', 'Total']
 
@@ -705,12 +723,18 @@ def dashadmin(request):
             print("Después local:", qs.count())
 
             qs = qs.order_by('-fecha_pedido')
-            print("SQL:", str(qs.query))
+            print("SQL:", qs.query)
 
             # Log de depuración de fechas en la BD
             print("--- DEBUG: Fechas de Pedidos en BD (UTC) ---")
             print(list(Pedido.objects.values_list("idPedido", "fecha_pedido")))
             print("-----------------------------------------")
+            print("Cantidad pedidos:", qs.count())
+            print(list(qs.values(
+                "idPedido",
+                "fecha_pedido",
+                "estado__estado_pedido",
+                "usuario__nombres")[:10]))
             
             data = list(qs.values('idPedido', 'usuario__nombres', 'estado__estado_pedido', 'fecha_pedido', 'total_general'))
 
@@ -721,47 +745,87 @@ def dashadmin(request):
             ).order_by('Nombre_local')
             print(f"--- DEBUG: Reporte de Locales ---")
 
-            # Aplicar filtros de fecha si existen (asumiendo que Local tiene un campo de fecha de creación)
-            if fecha_inicio:
-                # Asumimos que el modelo Local tiene un campo `fecha_creacion` o similar.
-                # Si no lo tiene, este filtro no hará nada. Lo añadimos para que sea consistente.
-                # Usamos __date para comparar solo la fecha.
-                qs = qs.filter(fecha_creacion__date__gte=fecha_inicio)
-            if fecha_fin:
-                qs = qs.filter(fecha_creacion__date__lte=fecha_fin)
+            # El modelo Local no tiene campo de fecha, por lo que no se aplican filtros de fecha.
 
             if locales_filter: qs = qs.filter(IdLocal__in=locales_filter)
             
             # Procesar datos para mostrar 'Activo'/'Inactivo'
             data = []
             for local in qs:
-                data.append({'Nombre_local': local.Nombre_local, 'Vendedor': local.IdUsuario.nombres, 'Estado': 'Activo' if local.EstaActivo else 'Inactivo', 'Productos': local.num_productos})
+                data.append({'Nombre_local': local.Nombre_local, 'Vendedor': local.IdUsuario.nombres, 'Estado': 'Activo' if local.EstaActivo else 'Inactivo', 'Productos Registrados': local.num_productos})
+            
+            print("SQL:", qs.query)
+            print("Cantidad locales:", qs.count())
+            print(list(qs.values(
+                "IdLocal", "Nombre_local", "EstaActivo"
+            )[:10]))
 
         elif report_type == 'uniformes':
             headers = ['Prenda', 'Local', 'Stock', 'Precio']
             qs = Prendas.objects.select_related('idLocal').order_by('nombre')
             print(f"--- DEBUG: Reporte de Uniformes ---")
-            if locales_filter: qs = qs.filter(idLocal_id__in=locales_filter)
+            if fecha_inicio:
+                fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+                qs = qs.filter(fechaPublicacion__date__gte=fecha_inicio_obj)
+                print("Después fecha inicio:", qs.count())
+            else:
+                print("Después fecha inicio: sin filtro")
+
+            if fecha_fin:
+                fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+                qs = qs.filter(fechaPublicacion__date__lte=fecha_fin_obj)
+                print("Después fecha fin:", qs.count())
+            else:
+                print("Después fecha fin: sin filtro")
+
+            if locales_filter:
+                qs = qs.filter(idLocal_id__in=locales_filter)
+            print("Después local:", qs.count())
+            
+            print("SQL:", qs.query)
+            print("Cantidad uniformes:", qs.count())
+            print(list(qs.values(
+                "nombre", "fechaPublicacion", "idLocal__Nombre_local"
+            )[:10]))
+
             data = list(qs.values('nombre', 'idLocal__Nombre_local', 'stock', 'precio'))
 
         elif report_type == 'usuarios':
             f_status_user = request.GET.get('f_status_user', '') # Nuevo filtro de estado
             headers = ['Nombre', 'Rol', 'Correo', 'Estado']
             qs = Usuario.objects.select_related('rol').order_by('nombres')
-            
-            if f_status_user == 'blocked':
-                qs = qs.filter(bloqueado_hasta__gt=now())
-            elif f_status_user == 'restricted':
-                qs = qs.filter(pendiente_aceptar_politicas=True)
-            elif f_status_user == 'active':
-                qs = qs.filter(Q(bloqueado_hasta__isnull=True) | Q(bloqueado_hasta__lte=now()), pendiente_aceptar_politicas=False)
+            print(f"--- DEBUG: Reporte de Usuarios ---")
+            print("Antes:", qs.count())
+
+            if fecha_inicio:
+                fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+                qs = qs.filter(fecha_creacion__date__gte=fecha_inicio_obj)
+                print("Después fecha inicio:", qs.count())
+            else:
+                print("Después fecha inicio: sin filtro")
+
+            if fecha_fin:
+                fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+                qs = qs.filter(fecha_creacion__date__lte=fecha_fin_obj)
+                print("Después fecha fin:", qs.count())
+            else:
+                print("Después fecha fin: sin filtro")
+
+            if f_status_user:
+                qs = qs.filter(bloqueado_hasta__isnull=(f_status_user != 'Bloqueado'))
+                print("Después estado:", qs.count())
+            else:
+                print("Después estado: sin filtro")
+
+            print("SQL:", qs.query)
+            print("Cantidad usuarios:", qs.count())
 
             data = []
-            print(f"--- DEBUG: Reporte de Usuarios ---")
             for u in qs:
-                if u.bloqueado_hasta and u.bloqueado_hasta > now(): estado = "Bloqueado"
-                elif u.pendiente_aceptar_politicas: estado = "Restringido"
-                else: estado = "Activo"
+                if u.bloqueado_hasta and u.bloqueado_hasta > now(): 
+                    estado = "Bloqueado"
+                else: 
+                    estado = "Activo"
                 data.append({'nombres': f"{u.nombres} {u.apellidos}", 'rol__nombre_rol': u.rol.nombre_rol, 'correo': u.correo, 'estado': estado})
 
         if export_format == 'excel':
@@ -771,7 +835,6 @@ def dashadmin(request):
 
         context.update({
             'report_type': report_type,
-            'headers': headers,
             'data': data[:100],
             'total_records': len(data),
             'f_fecha_inicio': fecha_inicio,
@@ -818,7 +881,7 @@ def generar_excel(report_name, headers, data):
             # Formatear fechas y decimales
             if isinstance(value, datetime):
                 value = value.strftime("%Y-%m-%d %H:%M")
-            elif isinstance(value, datetime.date): # Asumiendo que 'date' se importa de 'datetime'
+            elif isinstance(value, date):
                 value = value.strftime("%Y-%m-%d")
             elif isinstance(value, Decimal):
                 value = float(value)
@@ -883,7 +946,7 @@ def generar_pdf(report_name, headers, data):
             # Formatear valores para PDF
             if isinstance(value, datetime):
                 text = value.strftime("%d/%m/%y %H:%M")
-            elif isinstance(value, datetime.date): # Asumiendo que 'date' se importa de 'datetime'
+            elif isinstance(value, date):
                 text = value.strftime("%d/%m/%Y")
             elif isinstance(value, Decimal):
                 text = f"${value:,.0f}"
